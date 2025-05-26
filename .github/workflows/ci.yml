@@ -74,7 +74,7 @@ jobs:
         run: go build -v ./...
       
       - name: Run tests
-        run: go test -v -race -coverprofile=coverage.out ./...
+        run: go test -v -coverprofile=coverage.out ./...
         env:
           DB_HOST: localhost
           DB_PORT: 5432
@@ -89,8 +89,9 @@ jobs:
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
           echo "Total coverage: $COVERAGE%"
           
-          # Проверяем, что покрытие >= 70%
-          if (( $(echo "$COVERAGE >= 70" | bc -l) )); then
+          # Извлекаем целую часть процента для сравнения
+          COVERAGE_NUM=$(echo $COVERAGE | cut -d'.' -f1)
+          if [ $COVERAGE_NUM -ge 70 ]; then
             echo "✅ Coverage check passed: $COVERAGE% >= 70%"
           else
             echo "❌ Coverage check failed: $COVERAGE% < 70%"

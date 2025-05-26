@@ -64,24 +64,26 @@ func TestEncryptDecryptData(t *testing.T) {
 }
 
 func TestEncryptData_Error(t *testing.T) {
-	// errors during encryption do not occur with correct input data,
-	// but you can check that the function works correctly
-	encrypted, err := EncryptData([]byte("test"), "password")
+	// Test that encryption works even with empty password
+	encrypted, err := EncryptData([]byte("test"), "")
 	assert.NoError(t, err)
 	assert.NotNil(t, encrypted)
 }
 
 func TestDecryptData_Error(t *testing.T) {
-	// test case when ciphertext is too short
-	_, err := DecryptData([]byte("tooshort"), "password")
+	// Test with too short encrypted data
+	_, err := DecryptData([]byte("short"), "password")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "ciphertext too short")
 
-	// test case when ciphertext is damaged
+	// Test with invalid encrypted data of sufficient length but corrupted
 	encrypted, _ := EncryptData([]byte("test"), "password")
 	if len(encrypted) > 0 {
-		encrypted[len(encrypted)-1] = encrypted[len(encrypted)-1] ^ 0xFF // invert the last byte
+		// Corrupt the last byte
+		corrupted := make([]byte, len(encrypted))
+		copy(corrupted, encrypted)
+		corrupted[len(corrupted)-1] = corrupted[len(corrupted)-1] ^ 0xFF
+		_, err = DecryptData(corrupted, "password")
+		assert.Error(t, err)
 	}
-	_, err = DecryptData(encrypted, "password")
-	assert.Error(t, err)
 }
