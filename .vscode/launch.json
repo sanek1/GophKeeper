@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "type": "go",
+            "name": "debug main.go",
+            "request": "launch",
+            "mode": "auto",
+            "args": [],
+            "program": "c:\\golang\\yandex\\GophKeeper\\cmd\\server\\main.go"
+        },
+        {
+            "type": "go",
+            "name": "debug client.go",
+            "request": "launch",
+            "mode": "auto",
+            "args": [],
+            "program": "c:\\golang\\yandex\\GophKeeper\\cmd\\client\\main.go"
+        }
+    ]
+}
