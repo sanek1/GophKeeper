@@ -38,6 +38,8 @@ type Client struct {
 	syncMutex  sync.Mutex
 }
 
+var testJWTSecret = "test-secret-key-for-ci"
+
 // NewClient creates a new client instance
 func NewClient(config Config) *Client {
 	if config.TokenFile == "" {
@@ -164,7 +166,7 @@ func (c *Client) Login(login, password string) error {
 	// Check that the token works
 	if err := c.TestAuthentication(); err != nil {
 		// Use the auth package to regenerate the token
-		newToken, regErr := auth.RegenerateToken(c.token)
+		newToken, regErr := auth.RegenerateToken(c.token, testJWTSecret	)
 		if regErr != nil {
 			return fmt.Errorf("error during token regeneration: %w", regErr)
 		}
@@ -733,7 +735,7 @@ func (c *Client) TestAuthentication() error {
 	}
 
 	// Print debug information
-	fmt.Println("Using JWT_SECRET:", auth.JWTSecret)
+	fmt.Println("Using JWT_SECRET:", testJWTSecret)
 	fmt.Printf("Testing authentication with token: %s\n", c.token)
 
 	// Make a simple request to the API that requires authorization

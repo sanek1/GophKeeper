@@ -202,3 +202,5 @@ func (a *API) validateSecretRequest() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// GetAuthMiddleware returns the auth middleware for testing

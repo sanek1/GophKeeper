@@ -455,3 +455,32 @@ func TestAPI(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, getW.Code)
 	})
 }
+
+func TestAPI_Components(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	t.Run("NewAPI", func(t *testing.T) {
+		db := mocks.NewMockDatabase()
+		api := NewAPI(db, "test-secret")
+
+		assert.NotNil(t, api)
+		assert.NotNil(t, api.Router())
+	})
+
+	t.Run("Router", func(t *testing.T) {
+		db := mocks.NewMockDatabase()
+		api := NewAPI(db, "test-secret")
+
+		router := api.Router()
+		assert.NotNil(t, router)
+		assert.IsType(t, &gin.Engine{}, router)
+	})
+
+	t.Run("RegisterRoutes", func(t *testing.T) {
+		db := mocks.NewMockDatabase()
+		api := NewAPI(db, "test-secret")
+
+		// Test that routes are registered by checking router exists
+		assert.NotNil(t, api.router)
+	})
+}

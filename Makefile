@@ -25,29 +25,29 @@ test: ## Запуск всех тестов
 
 test-coverage: ## Запуск тестов с покрытием
 	@echo "$(GREEN)Running tests with coverage...$(NC)"
-	go test -v -race -coverprofile=coverage.out ./...
+	go test -v -race -coverprofile=coverage.out ./internal/...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "$(GREEN)Coverage report generated: coverage.html$(NC)"
 
 test-coverage-func: ## Показать покрытие по функциям
 	@echo "$(GREEN)Running tests with coverage...$(NC)"
-	go test -v -coverprofile=coverage.out ./...
+	go test -v -coverprofile=coverage.out ./internal/...
 	go tool cover -func=coverage.out
 
 test-race: ## Запуск тестов с детектором гонок
 	@echo "$(GREEN)Running tests with race detector...$(NC)"
 	go test -v -race ./...
 
-coverage-check: ## Проверка минимального покрытия (80%)
+coverage-check: ## Проверка минимального покрытия (70%)
 	@echo "$(GREEN)Checking coverage...$(NC)"
-	@go test -coverprofile=coverage.out ./... > /dev/null 2>&1
+	@go test -coverprofile=coverage.out ./internal/... > /dev/null 2>&1
 	@COVERAGE=$$(go tool cover -func=coverage.out | grep total | awk '{print substr($$3, 1, length($$3)-1)}'); \
 	echo "Total coverage: $$COVERAGE%"; \
 	COVERAGE_NUM=$$(echo $$COVERAGE | cut -d'.' -f1); \
-	if [ $$COVERAGE_NUM -ge 25 ]; then \
-		echo "$(GREEN)✅ Coverage check passed: $$COVERAGE% >= 25%$(NC)"; \
+	if [ $$COVERAGE_NUM -ge 70 ]; then \
+		echo "$(GREEN)✅ Coverage check passed: $$COVERAGE% >= 70%$(NC)"; \
 	else \
-		echo "$(RED)❌ Coverage check failed: $$COVERAGE% < 25%$(NC)"; \
+		echo "$(RED)❌ Coverage check failed: $$COVERAGE% < 70%$(NC)"; \
 		exit 1; \
 	fi
 

@@ -16,10 +16,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testJWTSecret = "test-jwt-secret-for-handlers"
+
 func setupTestAPI() *API {
 	gin.SetMode(gin.TestMode)
 	db := mocks.NewMockDatabase()
-	return NewTestAPI(db, "your-super-secret-key-change-in-production")
+	return NewTestAPI(db, testJWTSecret)
 }
 
 func createTestJWT(userID string) string {
@@ -27,7 +29,7 @@ func createTestJWT(userID string) string {
 		"user_id": userID,
 		"exp":     2147483647, // Far future
 	})
-	tokenString, _ := token.SignedString([]byte("your-super-secret-key-change-in-production"))
+	tokenString, _ := token.SignedString([]byte(testJWTSecret))
 	return tokenString
 }
 
@@ -555,5 +557,45 @@ func TestAPI_ErrorHandling(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("InvalidJSONRequest", func(t *testing.T) {
+		router := gin.New()
+		router.POST("/register", api.Register)
+
+		req := httptest.NewRequest("POST", "/register", bytes.NewBuffer([]byte("invalid json")))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("DatabaseErrors", func(t *testing.T) {
+		// Test various database error scenarios
+		router := gin.New()
+		router.POST("/register", api.Register)
+
+		// Test duplicate registration
+		reqBody := models.RegisterRequest{
+			Login:    "duplicate@test.com",
+			Password: "password123",
+		}
+		body, _ := json.Marshal(reqBody)
+
+		// First registration
+		req := httptest.NewRequest("POST", "/register", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code)
+
+		// Second registration (should fail)
+		req = httptest.NewRequest("POST", "/register", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w = httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusConflict, w.Code)
 	})
 }

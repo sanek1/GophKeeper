@@ -74,26 +74,22 @@ func (a *API) Login(c *gin.Context) {
 		return
 	}
 
-	// Use hardcoded value of JWT_SECRET
-	secretValue := "your-super-secret-key-change-in-production"
-
-	// Debug information
-	log.Printf("Generating JWT token for user %s with secret: %s", user.ID.String(), secretValue)
+	// Use JWT secret from configuration
+	log.Printf("Generating JWT token for user %s", user.ID.String())
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID.String(),
 		"exp":     time.Now().Add(24 * time.Hour).Unix(),
 	})
 
-	// Use hardcoded value
-	tokenString, err := token.SignedString([]byte(secretValue))
+	// Use JWT secret from API configuration
+	tokenString, err := token.SignedString([]byte(a.jwtSecret))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
 	}
 
-	// Debug information
-	log.Printf("Generated token: %s", tokenString)
+	log.Printf("Generated token successfully")
 
 	c.JSON(http.StatusOK, gin.H{"token": tokenString})
 }

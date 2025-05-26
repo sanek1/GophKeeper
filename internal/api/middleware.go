@@ -12,8 +12,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const jwtSecretValue = "your-super-secret-key-change-in-production"
-
 func (a *API) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body, err := io.ReadAll(c.Request.Body)
@@ -46,15 +44,15 @@ func (a *API) AuthMiddleware() gin.HandlerFunc {
 			tokenString = authHeader
 		}
 
-		log.Printf("Checking token, JWT_SECRET: %s, token: %s", jwtSecretValue, tokenString)
+		log.Printf("Checking token")
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 
-			// Use hardcoded value instead of a.jwtSecret
-			return []byte(jwtSecretValue), nil
+			// Use JWT secret from API configuration
+			return []byte(a.jwtSecret), nil
 		})
 
 		if err != nil {

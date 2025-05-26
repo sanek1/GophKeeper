@@ -10,18 +10,19 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// secret key for JWT tokens
-const JWTSecret = "your-super-secret-key-change-in-production"
-
 // claims for JWT tokens
 type JWTClaims struct {
 	UserID string `json:"user_id"`
 	Exp    int64  `json:"exp"`
 }
 
-func CreateToken(userID string, expirationHours int) (string, error) {
+func CreateToken(userID string, expirationHours int, jwtSecret string) (string, error) {
 	if expirationHours <= 0 {
 		expirationHours = 24
+	}
+
+	if jwtSecret == "" {
+		return "", fmt.Errorf("JWT secret is required")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -29,7 +30,7 @@ func CreateToken(userID string, expirationHours int) (string, error) {
 		"exp":     time.Now().Add(time.Duration(expirationHours) * time.Hour).Unix(),
 	})
 
-	tokenString, err := token.SignedString([]byte(JWTSecret))
+	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
 		return "", fmt.Errorf("error creating token: %w", err)
 	}
@@ -38,12 +39,16 @@ func CreateToken(userID string, expirationHours int) (string, error) {
 }
 
 // VerifyToken checks the validity of JWT token
-func VerifyToken(tokenString string) (string, error) {
+func VerifyToken(tokenString string, jwtSecret string) (string, error) {
+	if jwtSecret == "" {
+		return "", fmt.Errorf("JWT secret is required")
+	}
+
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(JWTSecret), nil
+		return []byte(jwtSecret), nil
 	})
 
 	if err != nil {
@@ -92,7 +97,11 @@ func ExtractUserIDFromToken(tokenString string) (string, int64, error) {
 }
 
 // RegenerateToken creates a new token based on the data from the existing token with updated expiration time
-func RegenerateToken(tokenString string) (string, error) {
+func RegenerateToken(tokenString string, jwtSecret string) (string, error) {
+	if jwtSecret == "" {
+		return "", fmt.Errorf("JWT secret is required")
+	}
+
 	userID, _, err := ExtractUserIDFromToken(tokenString)
 	if err != nil {
 		return "", err
@@ -105,7 +114,7 @@ func RegenerateToken(tokenString string) (string, error) {
 		"exp":     time.Now().Add(25 * time.Hour).Unix(),
 	})
 
-	newTokenString, err := token.SignedString([]byte(JWTSecret))
+	newTokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
 		return "", fmt.Errorf("error creating new token: %w", err)
 	}

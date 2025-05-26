@@ -7,17 +7,18 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 )
+const testJWTSecret = "test-jwt-secret-for-handlers"
 
 func TestCreateToken(t *testing.T) {
 	userID := "test-user-id"
 	expirationHours := 24
 
-	token, err := CreateToken(userID, expirationHours)
+	token, err := CreateToken(userID, expirationHours, testJWTSecret)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
 	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(JWTSecret), nil
+		return []byte(testJWTSecret), nil
 	})
 
 	assert.NoError(t, err)
@@ -32,34 +33,34 @@ func TestCreateToken(t *testing.T) {
 	timeDiff := expectedExpTime.Sub(expTime)
 	assert.True(t, timeDiff < time.Minute && timeDiff > -time.Minute)
 
-	token, err = CreateToken(userID, -1)
+	token, err = CreateToken(userID, -1, testJWTSecret)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 }
 
 func TestVerifyToken(t *testing.T) {
 	userID := "test-user-id"
-	token, err := CreateToken(userID, 24)
+	token, err := CreateToken(userID, 24, testJWTSecret)
 	assert.NoError(t, err)
 
-	extractedUserID, err := VerifyToken(token)
+	extractedUserID, err := VerifyToken(token, testJWTSecret)
 	assert.NoError(t, err)
 	assert.Equal(t, userID, extractedUserID)
 
-	_, err = VerifyToken("invalid.token.string")
+	_, err = VerifyToken("invalid.token.string", testJWTSecret)
 	assert.Error(t, err)
 
-	_, err = VerifyToken("")
+	_, err = VerifyToken("", testJWTSecret)
 	assert.Error(t, err)
 
 	expiredToken := createExpiredToken(userID)
-	_, err = VerifyToken(expiredToken)
+	_, err = VerifyToken(expiredToken, testJWTSecret)
 	assert.Error(t, err)
 }
 
 func TestExtractUserIDFromToken(t *testing.T) {
 	userID := "test-user-id"
-	token, err := CreateToken(userID, 24)
+	token, err := CreateToken(userID, 24, testJWTSecret)
 	assert.NoError(t, err)
 
 	extractedUserID, exp, err := ExtractUserIDFromToken(token)
@@ -77,20 +78,20 @@ func TestExtractUserIDFromToken(t *testing.T) {
 
 func TestRegenerateToken(t *testing.T) {
 	userID := "test-user-id"
-	originalToken, err := CreateToken(userID, 24)
+	originalToken, err := CreateToken(userID, 24, testJWTSecret)
 	assert.NoError(t, err)
 
-	newToken, err := RegenerateToken(originalToken)
+	newToken, err := RegenerateToken(originalToken, testJWTSecret)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, newToken)
 
 	assert.NotEqual(t, originalToken, newToken)
 
-	extractedUserID, err := VerifyToken(newToken)
+	extractedUserID, err := VerifyToken(newToken, testJWTSecret)
 	assert.NoError(t, err)
 	assert.Equal(t, userID, extractedUserID)
 
-	_, err = RegenerateToken("invalid.token.string")
+	_, err = RegenerateToken("invalid.token.string", testJWTSecret)
 	assert.Error(t, err)
 }
 
@@ -100,6 +101,6 @@ func createExpiredToken(userID string) string {
 		"exp":     time.Now().Add(-time.Hour).Unix(), // Истекший на 1 час
 	})
 
-	tokenString, _ := token.SignedString([]byte(JWTSecret))
+	tokenString, _ := token.SignedString([]byte(testJWTSecret))
 	return tokenString
 }

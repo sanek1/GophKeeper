@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sanek1/GophKeeper/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -119,7 +121,25 @@ func TestClient_TokenOperations(t *testing.T) {
 
 		assert.Equal(t, testToken, client.token)
 	})
+
+	t.Run("LoadMasterPassword", func(t *testing.T) {
+		masterFile := filepath.Join(tempDir, "master")
+		client.config.MasterPwdFile = masterFile
+
+		// Save master password
+		testPassword := "testmaster123"
+		client.masterPwd = testPassword
+		err := client.saveMasterPassword()
+		require.NoError(t, err)
+
+		// Clear and load
+		client.masterPwd = ""
+		client.loadMasterPassword()
+
+		assert.Equal(t, testPassword, client.masterPwd)
+	})
 }
+
 func TestClient_CacheOperations(t *testing.T) {
 	tempDir := t.TempDir()
 	client := &Client{
@@ -225,6 +245,20 @@ func TestClient_DisplaySecretData(t *testing.T) {
 		assert.Contains(t, result, "mypassword")
 	})
 
+	t.Run("CardType", func(t *testing.T) {
+		data := []byte("card data")
+		encrypted, _ := client.EncryptData(data)
+
+		secret := &models.Secret{
+			Type: "card",
+			Data: encrypted,
+		}
+
+		result, err := client.DisplaySecretData(secret)
+		require.NoError(t, err)
+		assert.Contains(t, result, "Card data:")
+	})
+
 	t.Run("TextType", func(t *testing.T) {
 		data := []byte("some text")
 		encrypted, _ := client.EncryptData(data)
@@ -237,6 +271,35 @@ func TestClient_DisplaySecretData(t *testing.T) {
 		result, err := client.DisplaySecretData(secret)
 		require.NoError(t, err)
 		assert.Equal(t, "some text", result)
+	})
+
+	t.Run("NoteType", func(t *testing.T) {
+		data := []byte("note content")
+		encrypted, _ := client.EncryptData(data)
+
+		secret := &models.Secret{
+			Type: "note",
+			Data: encrypted,
+		}
+
+		result, err := client.DisplaySecretData(secret)
+		require.NoError(t, err)
+		assert.Equal(t, "note content", result)
+	})
+
+	t.Run("FileType", func(t *testing.T) {
+		data := []byte("file content")
+		encrypted, _ := client.EncryptData(data)
+
+		secret := &models.Secret{
+			Type: "file",
+			Data: encrypted,
+		}
+
+		result, err := client.DisplaySecretData(secret)
+		require.NoError(t, err)
+		assert.Contains(t, result, "File content")
+		assert.Contains(t, result, "12 bytes")
 	})
 
 	t.Run("UnknownType", func(t *testing.T) {
@@ -252,40 +315,119 @@ func TestClient_DisplaySecretData(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, result, "Data (12 bytes)")
 	})
+
+	t.Run("DecryptionError", func(t *testing.T) {
+		secret := &models.Secret{
+			Type: "password",
+			Data: []byte("invalid encrypted data"),
+		}
+
+		_, err := client.DisplaySecretData(secret)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error decrypting data")
+	})
 }
 
-func TestClient_HTTPOperations(t *testing.T) {
-	// Create a mock HTTP server
+// Comprehensive HTTP Operations Tests
+func TestClient_HTTPOperations_Comprehensive(t *testing.T) {
+	testSecretID := uuid.New()
+
+	// Create a comprehensive mock HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/register":
-			if r.Method == "POST" {
-				w.WriteHeader(http.StatusCreated)
+		switch {
+		case r.URL.Path == "/api/register" && r.Method == "POST":
+			w.WriteHeader(http.StatusCreated)
+
+		case r.URL.Path == "/api/login" && r.Method == "POST":
+			var loginReq models.LoginRequest
+			json.NewDecoder(r.Body).Decode(&loginReq)
+			if loginReq.Login == "error@test.com" {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"error": "invalid credentials"}`))
 				return
 			}
-		case "/api/login":
-			if r.Method == "POST" {
-				response := map[string]string{"token": "mock.jwt.token"}
+			if loginReq.Login == "empty@test.com" {
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(response)
+				json.NewEncoder(w).Encode(map[string]string{"token": ""})
 				return
 			}
-		case "/api/secrets":
-			if r.Method == "GET" {
-				// Mock response for getting secrets
-				secrets := []models.Secret{
-					{
-						ID:       [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
-						Type:     "password",
-						Metadata: "Test",
-					},
-				}
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(secrets)
+			response := map[string]string{"token": "mock.jwt.token"}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
+
+		case r.URL.Path == "/api/secrets" && r.Method == "GET":
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
+			secrets := []models.Secret{
+				{
+					ID:       testSecretID,
+					Type:     "password",
+					Metadata: "Test Secret",
+					Data:     []byte("encrypted"),
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(secrets)
+
+		case r.URL.Path == "/api/secrets" && r.Method == "POST":
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			var req models.SecretRequest
+			json.NewDecoder(r.Body).Decode(&req)
+			secret := models.Secret{
+				ID:       uuid.New(),
+				Type:     req.Type,
+				Data:     req.Data,
+				Metadata: req.Metadata,
+			}
+			w.WriteHeader(http.StatusCreated)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(secret)
+
+		case r.URL.Path == fmt.Sprintf("/api/secrets/%s", testSecretID.String()) && r.Method == "GET":
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			secret := models.Secret{
+				ID:       testSecretID,
+				Type:     "password",
+				Metadata: "Test Secret",
+				Data:     []byte("encrypted"),
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(secret)
+
+		case r.URL.Path == fmt.Sprintf("/api/secrets/%s", testSecretID.String()) && r.Method == "PUT":
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			var req models.SecretRequest
+			json.NewDecoder(r.Body).Decode(&req)
+			secret := models.Secret{
+				ID:       testSecretID,
+				Type:     req.Type,
+				Data:     req.Data,
+				Metadata: req.Metadata,
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(secret)
+
+		case r.URL.Path == fmt.Sprintf("/api/secrets/%s", testSecretID.String()) && r.Method == "DELETE":
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+
+		default:
+			w.WriteHeader(http.StatusNotFound)
 		}
-		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
 
@@ -297,13 +439,363 @@ func TestClient_HTTPOperations(t *testing.T) {
 		CacheDir:      tempDir,
 	})
 
-	t.Run("Register", func(t *testing.T) {
+	t.Run("Register_Success", func(t *testing.T) {
 		err := client.Register("test@example.com", "password123")
 		assert.NoError(t, err)
 	})
 
-	// For testing other methods, we need a more complex mock server
-	// but this is a basic example
+	t.Run("Register_ErrorResponse", func(t *testing.T) {
+		// Test error handling in Register method
+		tempClient := &Client{
+			config: Config{
+				ServerURL: "http://invalid-url:99999", // Invalid URL to trigger error
+			},
+		}
+
+		err := tempClient.Register("test@example.com", "password123")
+		assert.Error(t, err) // Should error due to invalid server URL
+	})
+
+	t.Run("Login_Success", func(t *testing.T) {
+		err := client.Login("test@example.com", "password123")
+		assert.NoError(t, err)
+		assert.NotEmpty(t, client.token)
+	})
+
+	t.Run("Login_InvalidCredentials", func(t *testing.T) {
+		err := client.Login("error@test.com", "wrongpassword")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error during login")
+	})
+
+	t.Run("Login_EmptyToken", func(t *testing.T) {
+		err := client.Login("empty@test.com", "password123")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "server returned empty token")
+	})
+
+	// Set up client with token and master password for further tests
+	client.token = "test-token"
+	client.masterPwd = "master-password-123"
+
+	t.Run("GetSecrets_Success", func(t *testing.T) {
+		client.lastSync = time.Now().Add(-10 * time.Minute) // Force sync
+		secrets, err := client.GetSecrets()
+		if err != nil {
+			// Should get sync error but return local data
+			assert.Contains(t, err.Error(), "sync error")
+		} else {
+			assert.NotNil(t, secrets)
+		}
+	})
+
+	t.Run("GetSecret_Success", func(t *testing.T) {
+		secret, err := client.GetSecret(testSecretID.String())
+		assert.NoError(t, err)
+		assert.NotNil(t, secret)
+		assert.Equal(t, testSecretID.String(), secret.ID.String())
+	})
+
+	t.Run("GetSecret_NotFound", func(t *testing.T) {
+		nonExistentID := uuid.New().String()
+		_, err := client.GetSecret(nonExistentID)
+		assert.Error(t, err)
+	})
+
+	t.Run("CreateSecret_Success", func(t *testing.T) {
+		secret, err := client.CreateSecret("password", "Test Password", []byte("mypassword"))
+		assert.NoError(t, err)
+		assert.NotNil(t, secret)
+		assert.Equal(t, "password", secret.Type)
+	})
+
+	t.Run("CreateSecret_EncryptionError", func(t *testing.T) {
+		client.masterPwd = "" // Clear master password to cause encryption error
+		_, err := client.CreateSecret("password", "Test", []byte("data"))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error encrypting data")
+
+		client.masterPwd = "master-password-123" // Restore
+	})
+
+	t.Run("UpdateSecret_Success", func(t *testing.T) {
+		err := client.UpdateSecret(testSecretID.String(), "password", "Updated Password", []byte("newpassword"))
+		assert.NoError(t, err)
+	})
+
+	t.Run("DeleteSecret_Success", func(t *testing.T) {
+		err := client.DeleteSecret(testSecretID.String())
+		assert.NoError(t, err)
+	})
+}
+
+func TestClient_SyncWithServer(t *testing.T) {
+	testSecrets := []models.Secret{
+		{
+			ID:       uuid.New(),
+			Type:     "password",
+			Metadata: "Sync Test 1",
+		},
+		{
+			ID:       uuid.New(),
+			Type:     "note",
+			Metadata: "Sync Test 2",
+		},
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/secrets" && r.Method == "GET" {
+			if r.Header.Get("Authorization") == "Bearer unauthorized" {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"error": "unauthorized"}`))
+				return
+			}
+			if r.Header.Get("Authorization") == "Bearer error" {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"error": "server error"}`))
+				return
+			}
+			if r.Header.Get("Authorization") == "Bearer invalid-json" {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`invalid json`))
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(testSecrets)
+		}
+	}))
+	defer server.Close()
+
+	tempDir := t.TempDir()
+
+	t.Run("SyncWithServer_Success", func(t *testing.T) {
+		client := &Client{
+			config: Config{
+				ServerURL: server.URL,
+				CacheDir:  tempDir,
+			},
+			token:      "valid-token",
+			localCache: make(map[string]models.Secret),
+		}
+
+		err := client.SyncWithServer()
+		assert.NoError(t, err)
+		assert.Len(t, client.localCache, 2)
+		assert.False(t, client.lastSync.IsZero())
+	})
+
+	t.Run("SyncWithServer_NoToken", func(t *testing.T) {
+		client := &Client{
+			token: "",
+		}
+
+		err := client.SyncWithServer()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not authorized")
+	})
+
+	t.Run("SyncWithServer_Unauthorized", func(t *testing.T) {
+		client := &Client{
+			config: Config{
+				ServerURL: server.URL,
+			},
+			token: "unauthorized",
+		}
+
+		err := client.SyncWithServer()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "authorization error")
+	})
+
+	t.Run("SyncWithServer_ServerError", func(t *testing.T) {
+		client := &Client{
+			config: Config{
+				ServerURL: server.URL,
+			},
+			token: "error",
+		}
+
+		err := client.SyncWithServer()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "synchronization error")
+	})
+
+	t.Run("SyncWithServer_InvalidJSON", func(t *testing.T) {
+		client := &Client{
+			config: Config{
+				ServerURL: server.URL,
+			},
+			token: "invalid-json",
+		}
+
+		err := client.SyncWithServer()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error decoding")
+	})
+
+	t.Run("SyncWithServer_PreventDuplicate", func(t *testing.T) {
+		client := &Client{
+			config: Config{
+				ServerURL: server.URL,
+			},
+			token:   "valid-token",
+			syncing: true, // Already syncing
+		}
+
+		err := client.SyncWithServer()
+		assert.NoError(t, err) // Should return immediately without error
+	})
+}
+
+func TestClient_TestAuthentication(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		switch auth {
+		case "Bearer valid-token":
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode([]models.Secret{})
+		case "Bearer unauthorized-token":
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error": "unauthorized"}`))
+		case "Bearer forbidden-token":
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error": "forbidden"}`))
+		case "Bearer error-token":
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"error": "server error"}`))
+		default:
+			w.WriteHeader(http.StatusUnauthorized)
+		}
+	}))
+	defer server.Close()
+
+	t.Run("TestAuthentication_NoToken", func(t *testing.T) {
+		client := &Client{
+			config: Config{ServerURL: server.URL},
+			token:  "",
+		}
+
+		err := client.TestAuthentication()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no authorization token")
+	})
+
+	t.Run("TestAuthentication_ValidToken", func(t *testing.T) {
+		client := &Client{
+			config: Config{ServerURL: server.URL},
+			token:  "valid-token",
+		}
+
+		err := client.TestAuthentication()
+		assert.NoError(t, err)
+	})
+
+	t.Run("TestAuthentication_UnauthorizedToken", func(t *testing.T) {
+		client := &Client{
+			config: Config{ServerURL: server.URL},
+			token:  "unauthorized-token",
+		}
+
+		err := client.TestAuthentication()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "token is invalid or expired")
+	})
+
+	t.Run("TestAuthentication_ForbiddenToken", func(t *testing.T) {
+		client := &Client{
+			config: Config{ServerURL: server.URL},
+			token:  "forbidden-token",
+		}
+
+		err := client.TestAuthentication()
+		assert.NoError(t, err) // 403 is acceptable for token validation
+	})
+
+	t.Run("TestAuthentication_ServerError", func(t *testing.T) {
+		client := &Client{
+			config: Config{ServerURL: server.URL},
+			token:  "error-token",
+		}
+
+		err := client.TestAuthentication()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "token check error")
+	})
+}
+
+func TestClient_SafeSyncAfterLogin(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/secrets" && r.Method == "GET" {
+			secrets := []models.Secret{{
+				ID:   uuid.New(),
+				Type: "password",
+			}}
+			json.NewEncoder(w).Encode(secrets)
+		}
+	}))
+	defer server.Close()
+
+	tempDir := t.TempDir()
+	client := &Client{
+		config: Config{
+			ServerURL: server.URL,
+			CacheDir:  tempDir,
+		},
+		token:      "test-token",
+		localCache: make(map[string]models.Secret),
+	}
+
+	err := client.safeSyncAfterLogin()
+	assert.NoError(t, err)
+	assert.Len(t, client.localCache, 1)
+}
+
+func TestClient_StartAutoSync(t *testing.T) {
+	client := &Client{
+		config: Config{
+			SyncInterval: 50 * time.Millisecond,
+		},
+		token: "test-token",
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+	defer cancel()
+
+	// Start auto synchronization
+	client.StartAutoSync(ctx)
+
+	// Wait for the context to complete
+	<-ctx.Done()
+
+	// The test checks that the function does not panic and correctly completes
+}
+
+func TestEnsureDirExists(t *testing.T) {
+	tempDir := t.TempDir()
+	testDir := filepath.Join(tempDir, "test", "nested", "dir")
+
+	// The directory should not exist
+	_, err := os.Stat(testDir)
+	assert.True(t, os.IsNotExist(err))
+
+	// Create the directory
+	ensureDirExists(testDir)
+
+	// Check that the directory is created
+	info, err := os.Stat(testDir)
+	require.NoError(t, err)
+	assert.True(t, info.IsDir())
+
+	t.Run("EnsureDirExists_AlreadyExists", func(t *testing.T) {
+		// Call again on existing directory
+		ensureDirExists(testDir)
+
+		// Should still exist and be a directory
+		info, err := os.Stat(testDir)
+		require.NoError(t, err)
+		assert.True(t, info.IsDir())
+	})
 }
 
 func TestClient_Logout(t *testing.T) {
@@ -343,43 +835,6 @@ func TestClient_Logout(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 }
 
-func TestClient_StartAutoSync(t *testing.T) {
-	client := &Client{
-		config: Config{
-			SyncInterval: 100 * time.Millisecond,
-		},
-		token: "test-token",
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
-	defer cancel()
-
-	// Start auto synchronization
-	client.StartAutoSync(ctx)
-
-	// Wait for the context to complete
-	<-ctx.Done()
-
-	// The test checks that the function does not panic and correctly completes
-}
-
-func TestEnsureDirExists(t *testing.T) {
-	tempDir := t.TempDir()
-	testDir := filepath.Join(tempDir, "test", "nested", "dir")
-
-	// The directory should not exist
-	_, err := os.Stat(testDir)
-	assert.True(t, os.IsNotExist(err))
-
-	// Create the directory
-	ensureDirExists(testDir)
-
-	// Check that the directory is created
-	info, err := os.Stat(testDir)
-	require.NoError(t, err)
-	assert.True(t, info.IsDir())
-}
-
 // Additional tests for error cases and edge cases
 func TestClient_ErrorCases(t *testing.T) {
 	t.Run("SyncWithServer_NoToken", func(t *testing.T) {
@@ -392,10 +847,52 @@ func TestClient_ErrorCases(t *testing.T) {
 	t.Run("GetSecrets_EmptyCache", func(t *testing.T) {
 		client := &Client{
 			localCache: make(map[string]models.Secret),
-			lastSync:   time.Now().Add(-10 * time.Minute), 
+			lastSync:   time.Now().Add(-10 * time.Minute),
 		}
 
 		_, err := client.GetSecrets()
 		assert.Error(t, err)
+	})
+
+	t.Run("GetSecrets_WithCache_NoSync", func(t *testing.T) {
+		client := &Client{
+			config: Config{},
+			token:  "valid-token", // Add token to avoid authorization error
+			localCache: map[string]models.Secret{
+				"test": {Type: "test"},
+			},
+			lastSync: time.Now(), // Recent sync
+		}
+
+		secrets, err := client.GetSecrets()
+		assert.NoError(t, err)
+		assert.Len(t, secrets, 1)
+	})
+
+	t.Run("Register_JSONMarshalError", func(t *testing.T) {
+		client := &Client{}
+
+		// This tests the JSON marshaling path
+		err := client.Register("test@example.com", "password123")
+		assert.Error(t, err) // Should error due to no server URL
+	})
+
+	t.Run("CreateSecret_JSONMarshalError", func(t *testing.T) {
+		client := &Client{
+			masterPwd: "password123",
+		}
+
+		// This should trigger JSON marshal path
+		_, err := client.CreateSecret("password", "test", []byte("data"))
+		assert.Error(t, err) // Should error due to no server URL
+	})
+
+	t.Run("UpdateSecret_JSONMarshalError", func(t *testing.T) {
+		client := &Client{
+			masterPwd: "password123",
+		}
+
+		err := client.UpdateSecret("test-id", "password", "test", []byte("data"))
+		assert.Error(t, err) // Should error due to no server URL
 	})
 }
