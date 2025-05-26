@@ -3,8 +3,8 @@ package api
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/gophkeeper/internal/database"
-	"github.com/yourusername/gophkeeper/internal/repository/mocks"
+	"github.com/sanek1/GophKeeper/internal/database"
+	"github.com/sanek1/GophKeeper/internal/repository/mocks"
 )
 
 // NewTestAPI creates an API instance for testing without registering Swagger and routes

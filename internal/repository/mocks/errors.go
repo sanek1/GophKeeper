@@ -2,8 +2,8 @@ package mocks
 
 import "errors"
 
-// Определение ошибок для тестовых моков
+// Definition of errors for test mocks
 var (
-	ErrUserAlreadyExists = errors.New("пользователь с таким логином уже существует")
-	ErrSecretNotFound    = errors.New("секрет не найден")
+	ErrUserAlreadyExists = errors.New("user with this login already exists")
+	ErrSecretNotFound    = errors.New("secret not found")
 )

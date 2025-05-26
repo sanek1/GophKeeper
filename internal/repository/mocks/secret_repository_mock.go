@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/gophkeeper/internal/models"
-	"github.com/yourusername/gophkeeper/internal/repository"
+	"github.com/sanek1/GophKeeper/internal/models"
+	"github.com/sanek1/GophKeeper/internal/repository"
 )
 
 // SecretRepositoryMock represents a mock secret repository for testing

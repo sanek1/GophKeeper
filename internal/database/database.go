@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	_ "github.com/lib/pq"
-	"github.com/yourusername/gophkeeper/internal/config"
+	"github.com/sanek1/GophKeeper/internal/config"
 )
 
 type Database struct {
@@ -14,12 +14,11 @@ type Database struct {
 
 func NewDatabase(cfg *config.Config) (*Database, error) {
 	connStr := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s port=%s",
-		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPass, cfg.DBName, cfg.DBSSLMode, cfg.DBPort,
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPass, cfg.DBName, cfg.DBSSLMode,
 	)
-	fmt.Println(connStr)
 
-	db, err := sql.Open("postgres", "postgres://postgres:admin@localhost:5432/gophkeeper?sslmode=disable")
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sanek1/GophKeeper/internal/models"
 	"github.com/stretchr/testify/assert"
-	"github.com/yourusername/gophkeeper/internal/models"
 )
 
 func TestModels(t *testing.T) {

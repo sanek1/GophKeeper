@@ -4,17 +4,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/gophkeeper/internal/models"
-	"github.com/yourusername/gophkeeper/internal/repository"
+	"github.com/sanek1/GophKeeper/internal/models"
+	"github.com/sanek1/GophKeeper/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// MockUserRepository представляет мок репозитория пользователей для тестирования
+// MockUserRepository represents a mock user repository for testing
 type MockUserRepository struct {
-	Users map[string]*models.User // Пользователи, индексированные по логину
+	Users map[string]*models.User // Users indexed by login
 }
 
-// NewMockUserRepository создает новый экземпляр мока
+// NewMockUserRepository creates a new mock instance
 func NewMockUserRepository() *MockUserRepository {
 	return &MockUserRepository{
 		Users: make(map[string]*models.User),
@@ -24,9 +24,9 @@ func NewMockUserRepository() *MockUserRepository {
 // Ensure MockUserRepository implements UserRepository
 var _ repository.UserRepository = (*MockUserRepository)(nil)
 
-// Create создает нового пользователя
+// Create creates a new user
 func (m *MockUserRepository) Create(login, password string) (*models.User, error) {
-	// Проверяем, что пользователь с таким логином еще не существует
+	// check if a user with this login already exists
 	if _, exists := m.Users[login]; exists {
 		return nil, ErrUserAlreadyExists
 	}
@@ -48,7 +48,7 @@ func (m *MockUserRepository) Create(login, password string) (*models.User, error
 	return user, nil
 }
 
-// GetByLogin возвращает пользователя по логину
+// GetByLogin returns a user by login
 func (m *MockUserRepository) GetByLogin(login string) (*models.User, error) {
 	user, exists := m.Users[login]
 	if !exists {
@@ -57,7 +57,7 @@ func (m *MockUserRepository) GetByLogin(login string) (*models.User, error) {
 	return user, nil
 }
 
-// GetByID возвращает пользователя по ID
+// GetByID returns a user by ID
 func (m *MockUserRepository) GetByID(id uuid.UUID) (*models.User, error) {
 	for _, user := range m.Users {
 		if user.ID == id {
@@ -67,7 +67,7 @@ func (m *MockUserRepository) GetByID(id uuid.UUID) (*models.User, error) {
 	return nil, nil
 }
 
-// ValidatePassword проверяет пароль пользователя
+// ValidatePassword checks the user's password
 func (m *MockUserRepository) ValidatePassword(user *models.User, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	return err == nil

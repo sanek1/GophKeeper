@@ -10,9 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sanek1/GophKeeper/internal/api"
+	"github.com/sanek1/GophKeeper/internal/models"
 	"github.com/stretchr/testify/assert"
-	"github.com/yourusername/gophkeeper/internal/api"
-	"github.com/yourusername/gophkeeper/internal/models"
 )
 
 // Создание тестового токена

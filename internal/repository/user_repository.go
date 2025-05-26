@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/gophkeeper/internal/models"
+	"github.com/sanek1/GophKeeper/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 

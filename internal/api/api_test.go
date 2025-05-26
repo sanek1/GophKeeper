@@ -10,12 +10,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sanek1/GophKeeper/internal/mocks"
+	"github.com/sanek1/GophKeeper/internal/models"
 	"github.com/stretchr/testify/assert"
-	"github.com/yourusername/gophkeeper/internal/mocks"
-	"github.com/yourusername/gophkeeper/internal/models"
 )
 
-// Создание тестового токена
 func createTestToken(userID string) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": userID,
@@ -27,52 +26,31 @@ func createTestToken(userID string) string {
 
 // Tests for API
 func TestAPI(t *testing.T) {
-	// Disable real Swagger requests and route initialization
 	gin.SetMode(gin.TestMode)
-
-	// To avoid Swagger route conflicts in tests,
-	// use NewTestAPI instead of NewAPI
 	t.Run("API_CanBeCreated", func(t *testing.T) {
-		// Create mock database
 		db := mocks.NewMockDatabase()
 		jwtSecret := "your-super-secret-key-change-in-production"
-
-		// Initialize test API
 		apiInstance := NewTestAPI(db, jwtSecret)
-
-		// Check that API was created successfully
 		assert.NotNil(t, apiInstance)
 	})
 
-	// Test Register endpoint
 	t.Run("Register_Handler", func(t *testing.T) {
-		// Create mock database
 		db := mocks.NewMockDatabase()
 		jwtSecret := "your-super-secret-key-change-in-production"
-
-		// Initialize test API
 		apiInstance := NewTestAPI(db, jwtSecret)
-
-		// Registration data
 		registrationData := models.RegisterRequest{
 			Login:    "test@example.com",
 			Password: "password123",
 		}
 		jsonData, _ := json.Marshal(registrationData)
-
-		// Create test request
 		req := httptest.NewRequest("POST", "/api/register", bytes.NewBuffer(jsonData))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
-		// Create router for testing
 		router := gin.New()
 		router.POST("/api/register", apiInstance.Register)
 
-		// Execute request
 		router.ServeHTTP(w, req)
-
-		// Check result
 		assert.Equal(t, http.StatusCreated, w.Code)
 
 		var response models.User
@@ -82,16 +60,11 @@ func TestAPI(t *testing.T) {
 		assert.NotEmpty(t, response.ID)
 	})
 
-	// Тест эндпоинта Login
 	t.Run("Login_Handler", func(t *testing.T) {
-		// Создаем мок-базу данных
 		db := mocks.NewMockDatabase()
 		jwtSecret := "your-super-secret-key-change-in-production"
-
-		// Инициализируем тестовый API
 		apiInstance := NewTestAPI(db, jwtSecret)
 
-		// Сначала регистрируем пользователя
 		registrationData := models.RegisterRequest{
 			Login:    "login_test@example.com",
 			Password: "password123",
@@ -108,7 +81,6 @@ func TestAPI(t *testing.T) {
 
 		assert.Equal(t, http.StatusCreated, regW.Code)
 
-		// Теперь пытаемся залогиниться
 		loginData := models.LoginRequest{
 			Login:    "login_test@example.com",
 			Password: "password123",
@@ -122,7 +94,6 @@ func TestAPI(t *testing.T) {
 		router.POST("/api/login", apiInstance.Login)
 		router.ServeHTTP(loginW, loginReq)
 
-		// Проверяем результат
 		assert.Equal(t, http.StatusOK, loginW.Code)
 
 		var response map[string]string
@@ -131,16 +102,11 @@ func TestAPI(t *testing.T) {
 		assert.NotEmpty(t, response["token"])
 	})
 
-	// Тест неудачного логина (неверный пароль)
 	t.Run("Login_InvalidCredentials", func(t *testing.T) {
-		// Создаем мок-базу данных
 		db := mocks.NewMockDatabase()
 		jwtSecret := "your-super-secret-key-change-in-production"
 
-		// Инициализируем тестовый API
 		apiInstance := NewTestAPI(db, jwtSecret)
-
-		// Сначала регистрируем пользователя
 		registrationData := models.RegisterRequest{
 			Login:    "invalid_login@example.com",
 			Password: "password123",
@@ -157,7 +123,6 @@ func TestAPI(t *testing.T) {
 
 		assert.Equal(t, http.StatusCreated, regW.Code)
 
-		// Пытаемся залогиниться с неверным паролем
 		loginData := models.LoginRequest{
 			Login:    "invalid_login@example.com",
 			Password: "wrong_password",
@@ -171,21 +136,16 @@ func TestAPI(t *testing.T) {
 		router.POST("/api/login", apiInstance.Login)
 		router.ServeHTTP(loginW, loginReq)
 
-		// Проверяем результат - должен быть отказ
 		assert.Equal(t, http.StatusUnauthorized, loginW.Code)
 		assert.Contains(t, loginW.Body.String(), "invalid credentials")
 	})
 
-	// Тест создания секрета
 	t.Run("CreateSecret_Handler", func(t *testing.T) {
-		// Создаем мок-базу данных
 		db := mocks.NewMockDatabase()
 		jwtSecret := "your-super-secret-key-change-in-production"
 
-		// Инициализируем тестовый API
 		apiInstance := NewTestAPI(db, jwtSecret)
 
-		// Сначала регистрируем пользователя
 		registrationData := models.RegisterRequest{
 			Login:    "secret_test@example.com",
 			Password: "password123",
@@ -200,37 +160,28 @@ func TestAPI(t *testing.T) {
 		router.POST("/api/register", apiInstance.Register)
 		router.ServeHTTP(regW, regReq)
 
-		// Получаем ID пользователя
 		var user models.User
 		_ = json.Unmarshal(regW.Body.Bytes(), &user)
 		userID := user.ID.String()
-
-		// Создаем токен для авторизации
 		token := createTestToken(userID)
 
-		// Данные секрета
 		secretData := models.SecretRequest{
 			Type:     "password",
 			Data:     []byte("encrypted_data"),
 			Metadata: "Test Password",
 		}
 		jsonSecretData, _ := json.Marshal(secretData)
-
-		// Создаем запрос на создание секрета
 		createReq := httptest.NewRequest("POST", "/api/secrets", bytes.NewBuffer(jsonSecretData))
 		createReq.Header.Set("Content-Type", "application/json")
 		createReq.Header.Set("Authorization", "Bearer "+token)
 		createW := httptest.NewRecorder()
 
-		// Создаем роутер с middleware
 		secureRouter := gin.New()
 		secureRouter.Use(apiInstance.GetAuthMiddleware())
 		secureRouter.POST("/api/secrets", apiInstance.CreateSecret)
 
-		// Выполняем запрос
 		secureRouter.ServeHTTP(createW, createReq)
 
-		// Проверяем результат
 		assert.Equal(t, http.StatusCreated, createW.Code)
 
 		var secret models.Secret
@@ -241,16 +192,11 @@ func TestAPI(t *testing.T) {
 		assert.Equal(t, "Test Password", secret.Metadata)
 	})
 
-	// Тест получения списка секретов
 	t.Run("GetSecrets_Handler", func(t *testing.T) {
-		// Создаем мок-базу данных
 		db := mocks.NewMockDatabase()
 		jwtSecret := "your-super-secret-key-change-in-production"
 
-		// Инициализируем тестовый API
 		apiInstance := NewTestAPI(db, jwtSecret)
-
-		// Регистрируем пользователя
 		registrationData := models.RegisterRequest{
 			Login:    "get_secrets@example.com",
 			Password: "password123",
@@ -265,20 +211,15 @@ func TestAPI(t *testing.T) {
 		router.POST("/api/register", apiInstance.Register)
 		router.ServeHTTP(regW, regReq)
 
-		// Получаем ID пользователя
 		var user models.User
 		_ = json.Unmarshal(regW.Body.Bytes(), &user)
 		userID := user.ID.String()
-
-		// Создаем токен для авторизации
 		token := createTestToken(userID)
 
-		// Создаем несколько секретов
 		secretRouter := gin.New()
 		secretRouter.Use(apiInstance.GetAuthMiddleware())
 		secretRouter.POST("/api/secrets", apiInstance.CreateSecret)
 
-		// Первый секрет
 		secret1 := models.SecretRequest{
 			Type:     "password",
 			Data:     []byte("data1"),
@@ -291,7 +232,6 @@ func TestAPI(t *testing.T) {
 		createW1 := httptest.NewRecorder()
 		secretRouter.ServeHTTP(createW1, createReq1)
 
-		// Второй секрет
 		secret2 := models.SecretRequest{
 			Type:     "card",
 			Data:     []byte("data2"),
@@ -304,7 +244,6 @@ func TestAPI(t *testing.T) {
 		createW2 := httptest.NewRecorder()
 		secretRouter.ServeHTTP(createW2, createReq2)
 
-		// Теперь получаем все секреты
 		getReq := httptest.NewRequest("GET", "/api/secrets", nil)
 		getReq.Header.Set("Authorization", "Bearer "+token)
 		getW := httptest.NewRecorder()
@@ -312,7 +251,6 @@ func TestAPI(t *testing.T) {
 		secretRouter.GET("/api/secrets", apiInstance.GetSecrets)
 		secretRouter.ServeHTTP(getW, getReq)
 
-		// Проверяем результат
 		assert.Equal(t, http.StatusOK, getW.Code)
 
 		var secrets []*models.Secret
@@ -321,16 +259,12 @@ func TestAPI(t *testing.T) {
 		assert.Equal(t, 2, len(secrets))
 	})
 
-	// Тест получения одного секрета по ID
 	t.Run("GetSecret_Handler", func(t *testing.T) {
-		// Создаем мок-базу данных
 		db := mocks.NewMockDatabase()
 		jwtSecret := "your-super-secret-key-change-in-production"
 
-		// Инициализируем тестовый API
 		apiInstance := NewTestAPI(db, jwtSecret)
 
-		// Регистрируем пользователя
 		registrationData := models.RegisterRequest{
 			Login:    "get_one_secret@example.com",
 			Password: "password123",
@@ -345,15 +279,12 @@ func TestAPI(t *testing.T) {
 		router.POST("/api/register", apiInstance.Register)
 		router.ServeHTTP(regW, regReq)
 
-		// Получаем ID пользователя
 		var user models.User
 		_ = json.Unmarshal(regW.Body.Bytes(), &user)
 		userID := user.ID.String()
 
-		// Создаем токен для авторизации
 		token := createTestToken(userID)
 
-		// Создаем секрет
 		secretRouter := gin.New()
 		secretRouter.Use(apiInstance.GetAuthMiddleware())
 		secretRouter.POST("/api/secrets", apiInstance.CreateSecret)
@@ -370,12 +301,10 @@ func TestAPI(t *testing.T) {
 		createW := httptest.NewRecorder()
 		secretRouter.ServeHTTP(createW, createReq)
 
-		// Получаем созданный секрет
 		var createdSecret models.Secret
 		_ = json.Unmarshal(createW.Body.Bytes(), &createdSecret)
 		secretID := createdSecret.ID.String()
 
-		// Запрашиваем секрет по ID
 		getReq := httptest.NewRequest("GET", "/api/secrets/"+secretID, nil)
 		getReq.Header.Set("Authorization", "Bearer "+token)
 		getW := httptest.NewRecorder()
@@ -383,7 +312,6 @@ func TestAPI(t *testing.T) {
 		secretRouter.GET("/api/secrets/:id", apiInstance.GetSecret)
 		secretRouter.ServeHTTP(getW, getReq)
 
-		// Проверяем результат
 		assert.Equal(t, http.StatusOK, getW.Code)
 
 		var secret models.Secret
@@ -395,16 +323,11 @@ func TestAPI(t *testing.T) {
 		assert.Equal(t, "Important Note", secret.Metadata)
 	})
 
-	// Тест обновления секрета
 	t.Run("UpdateSecret_Handler", func(t *testing.T) {
-		// Создаем мок-базу данных
 		db := mocks.NewMockDatabase()
 		jwtSecret := "your-super-secret-key-change-in-production"
-
-		// Инициализируем тестовый API
 		apiInstance := NewTestAPI(db, jwtSecret)
 
-		// Регистрируем пользователя
 		registrationData := models.RegisterRequest{
 			Login:    "update_secret@example.com",
 			Password: "password123",
@@ -419,15 +342,11 @@ func TestAPI(t *testing.T) {
 		router.POST("/api/register", apiInstance.Register)
 		router.ServeHTTP(regW, regReq)
 
-		// Получаем ID пользователя
 		var user models.User
 		_ = json.Unmarshal(regW.Body.Bytes(), &user)
 		userID := user.ID.String()
-
-		// Создаем токен для авторизации
 		token := createTestToken(userID)
 
-		// Создаем секрет
 		secretRouter := gin.New()
 		secretRouter.Use(apiInstance.GetAuthMiddleware())
 		secretRouter.POST("/api/secrets", apiInstance.CreateSecret)
@@ -444,12 +363,10 @@ func TestAPI(t *testing.T) {
 		createW := httptest.NewRecorder()
 		secretRouter.ServeHTTP(createW, createReq)
 
-		// Получаем созданный секрет
 		var createdSecret models.Secret
 		_ = json.Unmarshal(createW.Body.Bytes(), &createdSecret)
 		secretID := createdSecret.ID.String()
 
-		// Обновляем секрет
 		updateData := models.SecretRequest{
 			Type:     "text",
 			Data:     []byte("new content"),
@@ -464,7 +381,6 @@ func TestAPI(t *testing.T) {
 		secretRouter.PUT("/api/secrets/:id", apiInstance.UpdateSecret)
 		secretRouter.ServeHTTP(updateW, updateReq)
 
-		// Проверяем результат
 		assert.Equal(t, http.StatusOK, updateW.Code)
 
 		var updatedSecret models.Secret
@@ -476,16 +392,11 @@ func TestAPI(t *testing.T) {
 		assert.Equal(t, "Updated Text", updatedSecret.Metadata)
 	})
 
-	// Тест удаления секрета
 	t.Run("DeleteSecret_Handler", func(t *testing.T) {
-		// Создаем мок-базу данных
 		db := mocks.NewMockDatabase()
 		jwtSecret := "your-super-secret-key-change-in-production"
 
-		// Инициализируем тестовый API
 		apiInstance := NewTestAPI(db, jwtSecret)
-
-		// Регистрируем пользователя
 		registrationData := models.RegisterRequest{
 			Login:    "delete_secret@example.com",
 			Password: "password123",
@@ -499,16 +410,12 @@ func TestAPI(t *testing.T) {
 		router := gin.New()
 		router.POST("/api/register", apiInstance.Register)
 		router.ServeHTTP(regW, regReq)
-
-		// Получаем ID пользователя
 		var user models.User
 		_ = json.Unmarshal(regW.Body.Bytes(), &user)
 		userID := user.ID.String()
 
-		// Создаем токен для авторизации
 		token := createTestToken(userID)
 
-		// Создаем секрет
 		secretRouter := gin.New()
 		secretRouter.Use(apiInstance.GetAuthMiddleware())
 		secretRouter.POST("/api/secrets", apiInstance.CreateSecret)
@@ -525,12 +432,10 @@ func TestAPI(t *testing.T) {
 		createW := httptest.NewRecorder()
 		secretRouter.ServeHTTP(createW, createReq)
 
-		// Получаем созданный секрет
 		var createdSecret models.Secret
 		_ = json.Unmarshal(createW.Body.Bytes(), &createdSecret)
 		secretID := createdSecret.ID.String()
 
-		// Удаляем секрет
 		deleteReq := httptest.NewRequest("DELETE", "/api/secrets/"+secretID, nil)
 		deleteReq.Header.Set("Authorization", "Bearer "+token)
 		deleteW := httptest.NewRecorder()
@@ -538,10 +443,8 @@ func TestAPI(t *testing.T) {
 		secretRouter.DELETE("/api/secrets/:id", apiInstance.DeleteSecret)
 		secretRouter.ServeHTTP(deleteW, deleteReq)
 
-		// Проверяем результат
 		assert.Equal(t, http.StatusOK, deleteW.Code)
 
-		// Пытаемся получить удаленный секрет
 		getReq := httptest.NewRequest("GET", "/api/secrets/"+secretID, nil)
 		getReq.Header.Set("Authorization", "Bearer "+token)
 		getW := httptest.NewRecorder()
@@ -549,7 +452,6 @@ func TestAPI(t *testing.T) {
 		secretRouter.GET("/api/secrets/:id", apiInstance.GetSecret)
 		secretRouter.ServeHTTP(getW, getReq)
 
-		// Проверяем, что секрет не найден
 		assert.Equal(t, http.StatusNotFound, getW.Code)
 	})
 }

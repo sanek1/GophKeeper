@@ -2,7 +2,7 @@ package repository
 
 import (
 	"github.com/google/uuid"
-	"github.com/yourusername/gophkeeper/internal/models"
+	"github.com/sanek1/GophKeeper/internal/models"
 )
 
 // UserRepository defines interface for working with user repository

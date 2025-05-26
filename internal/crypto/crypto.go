@@ -9,7 +9,7 @@ import (
 	"io"
 )
 
-// EncryptData шифрует данные с использованием AES-GCM
+// EncryptData encrypts data using AES-GCM
 func EncryptData(plaintext []byte, passphrase string) ([]byte, error) {
 	key := generateKey(passphrase)
 
@@ -28,13 +28,13 @@ func EncryptData(plaintext []byte, passphrase string) ([]byte, error) {
 		return nil, err
 	}
 
-	// Шифрование данных и добавление nonce в начало
+	// encryption of data and adding nonce to the beginning
 	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
 
 	return ciphertext, nil
 }
 
-// DecryptData расшифровывает данные, зашифрованные с использованием AES-GCM
+// DecryptData decrypts data encrypted using AES-GCM
 func DecryptData(ciphertext []byte, passphrase string) ([]byte, error) {
 	key := generateKey(passphrase)
 
@@ -52,10 +52,10 @@ func DecryptData(ciphertext []byte, passphrase string) ([]byte, error) {
 		return nil, errors.New("ciphertext too short")
 	}
 
-	// Извлекаем nonce из начала зашифрованных данных
+	// extract nonce from the beginning of the encrypted data
 	nonce, ciphertext := ciphertext[:gcm.NonceSize()], ciphertext[gcm.NonceSize():]
 
-	// Расшифровываем
+	// decrypt data
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func DecryptData(ciphertext []byte, passphrase string) ([]byte, error) {
 	return plaintext, nil
 }
 
-// generateKey генерирует 32-байтовый ключ из пароля
+// generateKey generates a 32-byte key from the passphrase
 func generateKey(passphrase string) []byte {
 	hash := sha256.Sum256([]byte(passphrase))
 	return hash[:]

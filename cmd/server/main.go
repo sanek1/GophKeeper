@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
-	"github.com/yourusername/gophkeeper/internal/api"
-	"github.com/yourusername/gophkeeper/internal/config"
-	"github.com/yourusername/gophkeeper/internal/database"
+	"github.com/sanek1/GophKeeper/internal/api"
+	"github.com/sanek1/GophKeeper/internal/config"
+	"github.com/sanek1/GophKeeper/internal/database"
 )
 
 func main() {

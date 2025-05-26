@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sanek1/GophKeeper/internal/api"
 	"github.com/stretchr/testify/assert"
-	"github.com/yourusername/gophkeeper/internal/api"
 )
 
 // Тест middleware без инициализации полного API
@@ -40,9 +40,9 @@ func TestAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("InvalidAuthHeaderFormat", func(t *testing.T) {
-		// Создаем тестовый запрос с неверным форматом заголовка
+		// Создаем тестовый запрос с неверным форматом заголовка (Bearer с несколькими токенами)
 		req := httptest.NewRequest("GET", "/", nil)
-		req.Header.Set("Authorization", "InvalidFormat")
+		req.Header.Set("Authorization", "Bearer token1 token2")
 		w := httptest.NewRecorder()
 		ctx, _ := gin.CreateTestContext(w)
 		ctx.Request = req

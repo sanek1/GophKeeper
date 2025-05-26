@@ -1,3 +1,4 @@
+basePath: /
 definitions:
   models.LoginRequest:
     properties:
@@ -73,8 +74,19 @@ definitions:
       updated_at:
         type: string
     type: object
+host: localhost:8080
 info:
-  contact: {}
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: API for GophKeeper password manager
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: GophKeeper API
+  version: "1.0"
 paths:
   /api/login:
     post:
@@ -242,4 +254,12 @@ paths:
       summary: Sync data
       tags:
       - sync
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    description: 'Enter JWT token in format: Bearer {your-token}'
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

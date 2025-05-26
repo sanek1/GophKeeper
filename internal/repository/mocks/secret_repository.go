@@ -2,26 +2,26 @@ package mocks
 
 import (
 	"github.com/google/uuid"
-	"github.com/yourusername/gophkeeper/internal/models"
-	"github.com/yourusername/gophkeeper/internal/repository"
+	"github.com/sanek1/GophKeeper/internal/models"
+	"github.com/sanek1/GophKeeper/internal/repository"
 )
 
-// MockSecretRepository реализует интерфейс репозитория секретов для тестов
+// MockSecretRepository implements the SecretRepository interface for testing
 type MockSecretRepository struct {
 	secrets map[uuid.UUID]*models.Secret
 }
 
-// Убеждаемся, что MockSecretRepository реализует интерфейс SecretRepository
+// ensure that MockSecretRepository implements the SecretRepository interface
 var _ repository.SecretRepository = (*MockSecretRepository)(nil)
 
-// NewMockSecretRepository создает новый мок-репозиторий секретов
+// NewMockSecretRepository creates a new mock secret repository
 func NewMockSecretRepository() *MockSecretRepository {
 	return &MockSecretRepository{
 		secrets: make(map[uuid.UUID]*models.Secret),
 	}
 }
 
-// Create создает новый секрет
+// Create creates a new secret
 func (r *MockSecretRepository) Create(userID uuid.UUID, secretType string, data []byte, metadata string) (*models.Secret, error) {
 	secret := &models.Secret{
 		ID:       uuid.New(),
@@ -35,7 +35,7 @@ func (r *MockSecretRepository) Create(userID uuid.UUID, secretType string, data 
 	return secret, nil
 }
 
-// GetByID возвращает секрет по ID
+// GetByID returns a secret by ID
 func (r *MockSecretRepository) GetByID(id uuid.UUID) (*models.Secret, error) {
 	if secret, ok := r.secrets[id]; ok {
 		return secret, nil
@@ -43,7 +43,7 @@ func (r *MockSecretRepository) GetByID(id uuid.UUID) (*models.Secret, error) {
 	return nil, nil
 }
 
-// GetByUserID возвращает все секреты пользователя
+// GetByUserID returns all secrets for a user
 func (r *MockSecretRepository) GetByUserID(userID uuid.UUID) ([]*models.Secret, error) {
 	var secrets []*models.Secret
 	for _, secret := range r.secrets {
@@ -54,7 +54,7 @@ func (r *MockSecretRepository) GetByUserID(userID uuid.UUID) ([]*models.Secret, 
 	return secrets, nil
 }
 
-// Update обновляет существующий секрет
+// Update updates an existing secret
 func (r *MockSecretRepository) Update(id uuid.UUID, secretType string, data []byte, metadata string) (*models.Secret, error) {
 	if secret, ok := r.secrets[id]; ok {
 		secret.Type = secretType
@@ -65,7 +65,7 @@ func (r *MockSecretRepository) Update(id uuid.UUID, secretType string, data []by
 	return nil, nil
 }
 
-// Delete удаляет секрет
+// Delete deletes a secret
 func (r *MockSecretRepository) Delete(id uuid.UUID) error {
 	delete(r.secrets, id)
 	return nil

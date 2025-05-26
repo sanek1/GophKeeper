@@ -26,7 +26,7 @@ func setupRouter() *gin.Engine {
 }
 
 func TestRegisterAndLogin(t *testing.T) {
-	r := setupRouter() 
+	r := setupRouter()
 
 	// Test data
 	registerBody := map[string]string{

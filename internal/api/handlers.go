@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/yourusername/gophkeeper/internal/models"
+	"github.com/sanek1/GophKeeper/internal/models"
 )
 
 // Register a new user
@@ -47,49 +47,6 @@ func (a *API) Register(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, user)
 }
-
-// Login user
-// @Summary Login user
-// @Description Login with credentials
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param user body models.LoginRequest true "User login info"
-// @Success 200 {string} string "JWT token"
-// @Router /api/login [post]
-/*func (a *API) Login(c *gin.Context) {
-	var req models.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	user, err := a.userRepo.GetByLogin(req.Login)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get user"})
-		return
-	}
-	if user == nil || !a.userRepo.ValidatePassword(user, req.Password) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
-		return
-	}
-
-	// Используем новый пакет auth для создания токена
-	log.Printf("Генерация JWT токена для пользователя %s с секретом: %s", user.ID.String(), auth.JWTSecret)
-
-	// Создаем токен на 24 часа
-	tokenString, err := auth.CreateToken(user.ID.String(), 24)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
-		return
-	}
-
-	// Отладочная информация
-	log.Printf("Сгенерирован токен: %s", tokenString)
-
-	c.JSON(http.StatusOK, gin.H{"token": tokenString})
-}
-*/
 
 // Login user
 // @Summary Login user
@@ -388,7 +345,7 @@ func (a *API) SyncData(c *gin.Context) {
 	syncStatus := models.SyncStatus{
 		LastSyncTime:    time.Now(),
 		ItemsDownloaded: len(secrets),
-		ItemsUploaded:   0, // In the future, this can be implemented as bidirectional synchronization
+		ItemsUploaded:   0,
 		Success:         true,
 	}
 

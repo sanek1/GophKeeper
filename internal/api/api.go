@@ -1,12 +1,19 @@
 // @title GophKeeper API
 // @version 1.0
 // @description API for GophKeeper password manager
+// @termsOfService http://swagger.io/terms/
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 // @host localhost:8080
 // @BasePath /
+// @schemes http
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description JWT Authorization header using the Bearer scheme. Example: "Bearer {token}"
+// @description Enter JWT token in format: Bearer {your-token}
 package api
 
 import (
@@ -20,12 +27,12 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	_ "github.com/sanek1/GophKeeper/docs"
+	"github.com/sanek1/GophKeeper/internal/database"
+	"github.com/sanek1/GophKeeper/internal/models"
+	"github.com/sanek1/GophKeeper/internal/repository"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	_ "github.com/yourusername/gophkeeper/docs"
-	"github.com/yourusername/gophkeeper/internal/database"
-	"github.com/yourusername/gophkeeper/internal/models"
-	"github.com/yourusername/gophkeeper/internal/repository"
 )
 
 type API struct {
@@ -60,7 +67,7 @@ func NewAPI(db database.DBInterface, jwtSecret string) *API {
 
 	// CORS middleware
 	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowOrigins = []string{"http://localhost:8080", "http://localhost:3000"} // Добавьте нужные домены
+	corsConfig.AllowOrigins = []string{"http://localhost:8080", "http://localhost:3000"}
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	corsConfig.AllowHeaders = []string{
 		"Origin",
@@ -85,63 +92,8 @@ func NewAPI(db database.DBInterface, jwtSecret string) *API {
 	// Register routes
 	api.registerRoutes()
 
-	// Статические файлы
-	router.Static("/static", "./static")
-
-	// Swagger UI с настройкой авторизации
-	router.GET("/swagger/*any", func(c *gin.Context) {
-		// Если запрашиваем скрипт авторизации
-		if c.Request.URL.Path == "/swagger/auth.js" {
-			c.File("./static/js/swagger-ui-auth.js")
-			return
-		}
-
-		// Стандартный обработчик Swagger UI
-		ginSwagger.WrapHandler(swaggerFiles.Handler)(c)
-	})
-
-	// Инъекция скрипта в Swagger UI
-	router.GET("/swagger/index.html", func(c *gin.Context) {
-		// Добавляем скрипт авторизации к стандартной странице Swagger
-		c.Header("Content-Type", "text/html")
-		c.String(http.StatusOK, `
-			<!DOCTYPE html>
-			<html lang="en">
-			<head>
-				<meta charset="UTF-8">
-				<title>Swagger UI</title>
-				<link rel="stylesheet" type="text/css" href="./swagger-ui.css" />
-				<link rel="stylesheet" type="text/css" href="./index.css" />
-				<link rel="icon" type="image/png" href="./favicon-32x32.png" sizes="32x32" />
-				<link rel="icon" type="image/png" href="./favicon-16x16.png" sizes="16x16" />
-			</head>
-			<body>
-				<div id="swagger-ui"></div>
-				<script src="./swagger-ui-bundle.js" charset="UTF-8"> </script>
-				<script src="./swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
-				<script src="./auth.js" charset="UTF-8"> </script>
-				<script>
-				window.onload = function() {
-					window.ui = SwaggerUIBundle({
-						url: "./doc.json",
-						dom_id: '#swagger-ui',
-						deepLinking: true,
-						presets: [
-							SwaggerUIBundle.presets.apis,
-							SwaggerUIStandalonePreset
-						],
-						plugins: [
-							SwaggerUIBundle.plugins.DownloadUrl
-						],
-						layout: "StandaloneLayout",
-						persistAuthorization: true
-					});
-				};
-				</script>
-			</body>
-			</html>
-		`)
-	})
+	// Swagger UI
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	return api
 }
@@ -165,7 +117,8 @@ func (a *API) registerRoutes() {
 	protected.Use(a.AuthMiddleware())
 	{
 		protected.GET("/secrets", a.GetSecrets)
-		protected.POST("/secrets", a.validateSecretRequest(), a.CreateSecret)
+		//protected.POST("/secrets", a.validateSecretRequest(), a.CreateSecret)
+		protected.POST("/secrets", a.CreateSecret)
 		protected.GET("/secrets/:id", a.GetSecret)
 		protected.PUT("/secrets/:id", a.validateSecretRequest(), a.UpdateSecret)
 		protected.DELETE("/secrets/:id", a.DeleteSecret)
@@ -225,7 +178,7 @@ func (a *API) validateSecretRequest() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.SecretRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
 			c.Abort()
 			return
 		}
@@ -244,6 +197,8 @@ func (a *API) validateSecretRequest() gin.HandlerFunc {
 			return
 		}
 
+		// Store the validated request in context for use in handlers
+		c.Set("validatedRequest", req)
 		c.Next()
 	}
 }

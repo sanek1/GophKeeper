@@ -3,8 +3,8 @@ package tests
 import (
 	"testing"
 
+	"github.com/sanek1/GophKeeper/internal/repository/mocks"
 	"github.com/stretchr/testify/assert"
-	"github.com/yourusername/gophkeeper/internal/repository/mocks"
 )
 
 func TestUserRepository(t *testing.T) {

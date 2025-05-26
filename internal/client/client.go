@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/gophkeeper/internal/auth"
-	"github.com/yourusername/gophkeeper/internal/crypto"
-	"github.com/yourusername/gophkeeper/internal/models"
+	"github.com/sanek1/GophKeeper/internal/auth"
+	"github.com/sanek1/GophKeeper/internal/crypto"
+	"github.com/sanek1/GophKeeper/internal/models"
 )
 
 // Config contains client settings
@@ -286,7 +286,7 @@ func (c *Client) GetSecrets() ([]models.Secret, error) {
 		if err := c.SyncWithServer(); err != nil {
 			// If there was a sync error, but we have local data,
 			// simply issue a warning and return local data
-			if c.localCache != nil && len(c.localCache) > 0 {
+			if len(c.localCache) > 0 {
 				return c.GetOfflineSecrets(), fmt.Errorf("sync error: %w, using local data", err)
 			}
 			return nil, fmt.Errorf("sync error: %w", err)
@@ -725,8 +725,6 @@ func (c *Client) GetOfflineSecrets() []models.Secret {
 func (c *Client) IsAuthenticated() bool {
 	return c.token != ""
 }
-
-
 
 // TestAuthentication checks the validity of the token by requesting an API
 func (c *Client) TestAuthentication() error {

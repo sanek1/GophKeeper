@@ -4,8 +4,8 @@ import (
 	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/gophkeeper/internal/database"
-	"github.com/yourusername/gophkeeper/internal/models"
+	"github.com/sanek1/GophKeeper/internal/database"
+	"github.com/sanek1/GophKeeper/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 

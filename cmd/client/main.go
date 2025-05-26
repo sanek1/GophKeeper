@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/yourusername/gophkeeper/internal/client"
-	"github.com/yourusername/gophkeeper/internal/models"
+	"github.com/sanek1/GophKeeper/internal/client"
+	"github.com/sanek1/GophKeeper/internal/models"
 )
 
 var (
@@ -61,7 +61,7 @@ func main() {
 	// interactive mode
 	fmt.Println("GophKeeper - manager of passwords and confidential data")
 	fmt.Println("Version:", version)
-	fmt.Println("Enter 'help' for a list of commands or 'exit' to exit\n")
+	fmt.Println("Enter 'help' for a list of commands or 'exit' to exit")
 
 	scanner := bufio.NewScanner(os.Stdin)
 

@@ -1,7 +1,9 @@
 package api
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -14,6 +16,12 @@ const jwtSecretValue = "your-super-secret-key-change-in-production"
 
 func (a *API) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request"})
+			c.Abort()
+			return
+		}
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization header is required"})
@@ -38,11 +46,9 @@ func (a *API) AuthMiddleware() gin.HandlerFunc {
 			tokenString = authHeader
 		}
 
-		// Debug information
 		log.Printf("Checking token, JWT_SECRET: %s, token: %s", jwtSecretValue, tokenString)
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			// Check signature algorithm
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
@@ -80,6 +86,7 @@ func (a *API) AuthMiddleware() gin.HandlerFunc {
 		}
 
 		c.Set("user_id", userID)
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 		c.Next()
 	}
 }

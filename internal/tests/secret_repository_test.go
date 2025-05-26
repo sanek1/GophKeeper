@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/sanek1/GophKeeper/internal/repository/mocks"
 	"github.com/stretchr/testify/assert"
-	"github.com/yourusername/gophkeeper/internal/repository/mocks"
 )
 
 func TestSecretRepository(t *testing.T) {
