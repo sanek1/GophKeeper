@@ -856,8 +856,10 @@ func TestClient_ErrorCases(t *testing.T) {
 
 	t.Run("GetSecrets_WithCache_NoSync", func(t *testing.T) {
 		client := &Client{
-			config: Config{},
-			token:  "valid-token", // Add token to avoid authorization error
+			config: Config{
+				SyncInterval: 10 * time.Minute,
+			},
+			token: "valid-token",
 			localCache: map[string]models.Secret{
 				"test": {Type: "test"},
 			},
