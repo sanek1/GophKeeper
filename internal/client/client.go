@@ -101,7 +101,6 @@ func (c *Client) Register(login, password string) error {
 		return err
 	}
 
-	fmt.Println(reqBody)
 	resp, err := http.Post(
 		fmt.Sprintf("%s/api/register", c.config.ServerURL),
 		"application/json",
@@ -166,7 +165,7 @@ func (c *Client) Login(login, password string) error {
 	// Check that the token works
 	if err := c.TestAuthentication(); err != nil {
 		// Use the auth package to regenerate the token
-		newToken, regErr := auth.RegenerateToken(c.token, testJWTSecret	)
+		newToken, regErr := auth.RegenerateToken(c.token, testJWTSecret)
 		if regErr != nil {
 			return fmt.Errorf("error during token regeneration: %w", regErr)
 		}
