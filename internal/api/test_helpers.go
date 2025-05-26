@@ -10,12 +10,14 @@ import (
 // NewTestAPI creates an API instance for testing without registering Swagger and routes
 func NewTestAPI(db database.DBInterface, jwtSecret string) *API {
 	gin.SetMode(gin.TestMode)
+
+	// Use gin.New() to avoid default middleware in tests
 	router := gin.New()
 
-	// Panic recovery
+	// Add only necessary middleware for tests
 	router.Use(gin.Recovery())
 
-	// CORS middleware
+	// CORS middleware for tests
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}

@@ -12,7 +12,11 @@ import (
 )
 
 func setupRouter() *gin.Engine {
-	r := gin.Default()
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+
+	// Add only necessary middleware for this test
+	r.Use(gin.Recovery())
 
 	r.POST("/api/v1/auth/register", func(c *gin.Context) {
 		c.Status(200)
