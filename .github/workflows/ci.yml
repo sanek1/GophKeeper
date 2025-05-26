@@ -10,6 +10,10 @@ env:
   GO_VERSION: '1.21'
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -130,6 +134,10 @@ jobs:
           name: gophkeeper-${{ matrix.os }}-${{ matrix.arch }}
           path: bin/
           retention-days: 30
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
 
 
   docker:
