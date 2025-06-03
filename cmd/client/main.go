@@ -106,289 +106,296 @@ func processCommand(c *client.Client, ctx context.Context, args []string) {
 	switch args[0] {
 	case "help", "--help", "-h":
 		printUsage()
-		return
-
 	case "version", "-v", "--version":
 		printVersion()
-		return
-
 	case "register":
-		if len(args) != 3 {
-			fmt.Println("Usage: register <login> <password>")
-			return
-		}
-		if err := c.Register(args[1], args[2]); err != nil {
-			fmt.Printf("Registration error: %v\n", err)
-			return
-		}
-		fmt.Println("Registration successful. Now you can log in.")
-
+		handleRegister(c, args)
 	case "login":
-		if len(args) != 3 {
-			fmt.Println("Usage: login <login> <password>")
-			return
-		}
-		if err := c.Login(args[1], args[2]); err != nil {
-			fmt.Printf("Login error: %v\n", err)
-			return
-		}
-
-		// check token validity
-		if err := c.TestAuthentication(); err != nil {
-			fmt.Printf("Login successful, but token is invalid: %v\n", err)
-			fmt.Println("Maybe the server is using a non-standard JWT_SECRET.")
-			fmt.Println("Please check the server settings or try to log in again.")
-			return
-		}
-
-		fmt.Println("Login successful.")
-		// Start automatic synchronization after login
-		c.StartAutoSync(ctx)
-
+		handleLogin(c, ctx, args)
 	case "list":
-		// check if user is authenticated
-		if !c.IsAuthenticated() {
-			fmt.Println("You are not authenticated. Please log in.")
-			return
-		}
-
-		// check token validity
-		if err := c.TestAuthentication(); err != nil {
-			fmt.Printf("Authentication error: %v\n", err)
-			fmt.Println("Please log in again.")
-			return
-		}
-
-		// check if master password is set
-		if !c.IsMasterPasswordSet() {
-			fmt.Println("Master password is not set. Use the set-master-password command.")
-			return
-		}
-
-		secrets, err := c.GetSecrets()
-		if err != nil {
-			// if there is no connection to the server, use local data
-			fmt.Printf("Warning: %v\n", err)
-			fmt.Println("Using local data from cache...")
-			secrets = c.GetOfflineSecrets()
-		}
-
-		if len(secrets) == 0 {
-			fmt.Println("Secrets not found")
-			return
-		}
-
-		fmt.Println("Your secrets:")
-		for _, s := range secrets {
-			fmt.Printf("ID: %s, Type: %s, Metadata: %s\n", s.ID, s.Type, s.Metadata)
-		}
-
+		handleList(c)
 	case "create":
-		if len(args) != 4 {
-			fmt.Println("Usage: create <type> <metadata> <data>")
-			fmt.Println("Supported types:", models.SecretTypes)
-			return
-		}
-
-		// check if user is authenticated
-		if !c.IsAuthenticated() {
-			fmt.Println("You are not authenticated. Please log in.")
-			return
-		}
-
-		// check token validity
-		if err := c.TestAuthentication(); err != nil {
-			fmt.Printf("Authentication error: %v\n", err)
-			fmt.Println("Please log in again.")
-			return
-		}
-
-		// check if master password is set
-		if !c.IsMasterPasswordSet() {
-			fmt.Println("Master password is not set. Use the set-master-password command.")
-			return
-		}
-
-		secretType := args[1]
-		metadata := args[2]
-		data := []byte(args[3])
-
-		// check if secret type is valid
-		validType := false
-		for _, t := range models.SecretTypes {
-			if t == secretType {
-				validType = true
-				break
-			}
-		}
-		if !validType {
-			fmt.Printf("Invalid secret type. Supported types: %v\n", models.SecretTypes)
-			return
-		}
-
-		secret, err := c.CreateSecret(secretType, metadata, data)
-		if err != nil {
-			fmt.Printf("Error creating secret: %v\n", err)
-			return
-		}
-		fmt.Printf("Secret created with ID: %s\n", secret.ID)
-
+		handleCreate(c, args)
 	case "get":
-		if len(args) != 2 {
-			fmt.Println("Usage: get <id>")
-			return
-		}
-
-		// check if user is authenticated
-		if !c.IsAuthenticated() {
-			fmt.Println("You are not authenticated. Please log in.")
-			return
-		}
-
-		// check token validity
-		if err := c.TestAuthentication(); err != nil {
-			fmt.Printf("Authentication error: %v\n", err)
-			fmt.Println("Please log in again.")
-			return
-		}
-
-		// check if master password is set
-		if !c.IsMasterPasswordSet() {
-			fmt.Println("Master password is not set. Use the set-master-password command.")
-			return
-		}
-
-		secret, err := c.GetSecret(args[1])
-		if err != nil {
-			fmt.Printf("Error getting secret: %v\n", err)
-			return
-		}
-
-		fmt.Printf("ID: %s\nType: %s\nMetadata: %s\n",
-			secret.ID, secret.Type, secret.Metadata)
-
-		// use new function to display data
-		data, err := c.DisplaySecretData(secret)
-		if err != nil {
-			fmt.Printf("Error displaying data: %v\n", err)
-			return
-		}
-		fmt.Printf("Data: %s\n", data)
-
+		handleGet(c, args)
 	case "delete":
-		if len(args) != 2 {
-			fmt.Println("Usage: delete <id>")
-			return
-		}
-
-		// check if user is authenticated
-		if !c.IsAuthenticated() {
-			fmt.Println("You are not authenticated. Please log in.")
-			return
-		}
-
-		// check token validity
-		if err := c.TestAuthentication(); err != nil {
-			fmt.Printf("Authentication error: %v\n", err)
-			fmt.Println("Please log in again.")
-			return
-		}
-
-		if err := c.DeleteSecret(args[1]); err != nil {
-			fmt.Printf("Error deleting secret: %v\n", err)
-			return
-		}
-		fmt.Println("Secret successfully deleted")
-
+		handleDelete(c, args)
 	case "update":
-		if len(args) != 4 {
-			fmt.Println("Usage: update <id> <metadata> <data>")
-			return
-		}
-
-		// check if user is authenticated
-		if !c.IsAuthenticated() {
-			fmt.Println("You are not authenticated. Please log in.")
-			return
-		}
-
-		// check token validity
-		if err := c.TestAuthentication(); err != nil {
-			fmt.Printf("Authentication error: %v\n", err)
-			fmt.Println("Please log in again.")
-			return
-		}
-
-		// check if master password is set
-		if !c.IsMasterPasswordSet() {
-			fmt.Println("Master password is not set. Use the set-master-password command.")
-			return
-		}
-
-		id := args[1]
-		metadata := args[2]
-		data := []byte(args[3])
-
-		// get current secret to save its type
-		secret, err := c.GetSecret(id)
-		if err != nil {
-			fmt.Printf("Error getting secret: %v\n", err)
-			return
-		}
-
-		if err := c.UpdateSecret(id, secret.Type, metadata, data); err != nil {
-			fmt.Printf("Error updating secret: %v\n", err)
-			return
-		}
-		fmt.Println("Secret successfully updated")
-
+		handleUpdate(c, args)
 	case "set-master-password":
-		if len(args) != 2 {
-			fmt.Println("Usage: set-master-password <password>")
-			return
-		}
-		if err := c.SetMasterPassword(args[1]); err != nil {
-			fmt.Printf("Error setting master password: %v\n", err)
-			return
-		}
-		fmt.Println("Master password successfully set")
-
+		handleSetMasterPassword(c, args)
 	case "sync":
-		// command for manual synchronization
-		if !c.IsAuthenticated() {
-			fmt.Println("You are not authenticated. Please log in.")
-			return
-		}
-
-		// check token validity
-		if err := c.TestAuthentication(); err != nil {
-			fmt.Printf("Authentication error: %v\n", err)
-			fmt.Println("Please log in again.")
-			return
-		}
-
-		fmt.Println("Synchronizing data with the server...")
-		if err := c.SyncWithServer(); err != nil {
-			fmt.Printf("Synchronization error: %v\n", err)
-			return
-		}
-		fmt.Println("Synchronization completed successfully")
-
+		handleSync(c)
 	case "logout":
-		// command for logout
-		if err := c.Logout(); err != nil {
-			fmt.Printf("Logout error: %v\n", err)
-			return
-		}
-		fmt.Println("You have logged out")
-
+		handleLogout(c)
 	case "clear", "cls":
-		// clear screen
 		clearScreen()
-
 	default:
 		fmt.Printf("Unknown command: %s\nEnter 'help' for a list of commands\n", args[0])
 	}
+}
+
+// checkAuthentication checks if the user is authenticated
+func checkAuthentication(c *client.Client) error {
+	if !c.IsAuthenticated() {
+		return fmt.Errorf("you are not authenticated. Please log in")
+	}
+
+	if err := c.TestAuthentication(); err != nil {
+		return fmt.Errorf("authentication error: %v\nPlease log in again", err)
+	}
+
+	return nil
+}
+
+// checkMasterPassword checks if the master password is set
+func checkMasterPassword(c *client.Client) error {
+	if !c.IsMasterPasswordSet() {
+		return fmt.Errorf("master password is not set. Use the set-master-password command")
+	}
+	return nil
+}
+
+// validateSecretType checks if the secret type is valid
+func validateSecretType(secretType string) error {
+	for _, t := range models.SecretTypes {
+		if t == secretType {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid secret type. Supported types: %v", models.SecretTypes)
+}
+
+// handleRegister handles the register command
+func handleRegister(c *client.Client, args []string) {
+	if len(args) != 3 {
+		fmt.Println("Usage: register <login> <password>")
+		return
+	}
+
+	if err := c.Register(args[1], args[2]); err != nil {
+		fmt.Printf("Registration error: %v\n", err)
+		return
+	}
+	fmt.Println("Registration successful. Now you can log in.")
+}
+
+// handleLogin handles the login command
+func handleLogin(c *client.Client, ctx context.Context, args []string) {
+	if len(args) != 3 {
+		fmt.Println("Usage: login <login> <password>")
+		return
+	}
+
+	if err := c.Login(args[1], args[2]); err != nil {
+		fmt.Printf("Login error: %v\n", err)
+		return
+	}
+
+	// check token validity
+	if err := c.TestAuthentication(); err != nil {
+		fmt.Printf("Login successful, but token is invalid: %v\n", err)
+		fmt.Println("Maybe the server is using a non-standard JWT_SECRET.")
+		fmt.Println("Please check the server settings or try to log in again.")
+		return
+	}
+
+	fmt.Println("Login successful.")
+	// Start automatic synchronization after login
+	c.StartAutoSync(ctx)
+}
+
+// handleList handles the list command
+func handleList(c *client.Client) {
+	if err := checkAuthentication(c); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if err := checkMasterPassword(c); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	secrets, err := c.GetSecrets()
+	if err != nil {
+		// if there is no connection to the server, use local data
+		fmt.Printf("Warning: %v\n", err)
+		fmt.Println("Using local data from cache...")
+		secrets = c.GetOfflineSecrets()
+	}
+
+	if len(secrets) == 0 {
+		fmt.Println("Secrets not found")
+		return
+	}
+
+	fmt.Println("Your secrets:")
+	for _, s := range secrets {
+		fmt.Printf("ID: %s, Type: %s, Metadata: %s\n", s.ID, s.Type, s.Metadata)
+	}
+}
+
+// handleCreate handles the create command
+func handleCreate(c *client.Client, args []string) {
+	if len(args) != 4 {
+		fmt.Println("Usage: create <type> <metadata> <data>")
+		fmt.Println("Supported types:", models.SecretTypes)
+		return
+	}
+
+	if err := checkAuthentication(c); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if err := checkMasterPassword(c); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	secretType := args[1]
+	metadata := args[2]
+	data := []byte(args[3])
+
+	if err := validateSecretType(secretType); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	secret, err := c.CreateSecret(secretType, metadata, data)
+	if err != nil {
+		fmt.Printf("Error creating secret: %v\n", err)
+		return
+	}
+	fmt.Printf("Secret created with ID: %s\n", secret.ID)
+}
+
+// handleGet handles the get command
+func handleGet(c *client.Client, args []string) {
+	if len(args) != 2 {
+		fmt.Println("Usage: get <id>")
+		return
+	}
+
+	if err := checkAuthentication(c); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if err := checkMasterPassword(c); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	secret, err := c.GetSecret(args[1])
+	if err != nil {
+		fmt.Printf("Error getting secret: %v\n", err)
+		return
+	}
+
+	fmt.Printf("ID: %s\nType: %s\nMetadata: %s\n",
+		secret.ID, secret.Type, secret.Metadata)
+
+	// use new function to display data
+	data, err := c.DisplaySecretData(secret)
+	if err != nil {
+		fmt.Printf("Error displaying data: %v\n", err)
+		return
+	}
+	fmt.Printf("Data: %s\n", data)
+}
+
+// handleDelete handles the delete command
+func handleDelete(c *client.Client, args []string) {
+	if len(args) != 2 {
+		fmt.Println("Usage: delete <id>")
+		return
+	}
+
+	if err := checkAuthentication(c); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if err := c.DeleteSecret(args[1]); err != nil {
+		fmt.Printf("Error deleting secret: %v\n", err)
+		return
+	}
+	fmt.Println("Secret successfully deleted")
+}
+
+// handleUpdate handles the update command
+func handleUpdate(c *client.Client, args []string) {
+	if len(args) != 4 {
+		fmt.Println("Usage: update <id> <metadata> <data>")
+		return
+	}
+
+	if err := checkAuthentication(c); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if err := checkMasterPassword(c); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	id := args[1]
+	metadata := args[2]
+	data := []byte(args[3])
+
+	// get current secret to save its type
+	secret, err := c.GetSecret(id)
+	if err != nil {
+		fmt.Printf("Error getting secret: %v\n", err)
+		return
+	}
+
+	if err := c.UpdateSecret(id, secret.Type, metadata, data); err != nil {
+		fmt.Printf("Error updating secret: %v\n", err)
+		return
+	}
+	fmt.Println("Secret successfully updated")
+}
+
+// handleSetMasterPassword handles the set-master-password command
+func handleSetMasterPassword(c *client.Client, args []string) {
+	if len(args) != 2 {
+		fmt.Println("Usage: set-master-password <password>")
+		return
+	}
+
+	if err := c.SetMasterPassword(args[1]); err != nil {
+		fmt.Printf("Error setting master password: %v\n", err)
+		return
+	}
+	fmt.Println("Master password successfully set")
+}
+
+// handleSync handles the sync command
+func handleSync(c *client.Client) {
+	if err := checkAuthentication(c); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("Synchronizing data with the server...")
+	if err := c.SyncWithServer(); err != nil {
+		fmt.Printf("Synchronization error: %v\n", err)
+		return
+	}
+	fmt.Println("Synchronization completed successfully")
+}
+
+// handleLogout handles the logout command
+func handleLogout(c *client.Client) {
+	if err := c.Logout(); err != nil {
+		fmt.Printf("Logout error: %v\n", err)
+		return
+	}
+	fmt.Println("You have logged out")
 }
 
 func printUsage() {
@@ -433,7 +440,10 @@ func clearScreen() {
 	if runtime.GOOS == "windows" {
 		cmd := exec.Command("cmd", "/c", "cls")
 		cmd.Stdout = os.Stdout
-		cmd.Run()
+		err := cmd.Run()
+		if err != nil {
+			fmt.Printf("Error clearing screen: %v\n", err)
+		}
 	} else {
 		// For Unix-like systems (Linux, macOS)
 		fmt.Print("\033[H\033[2J")

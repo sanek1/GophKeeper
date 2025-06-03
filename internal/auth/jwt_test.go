@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 )
+
 const testJWTSecret = "test-jwt-secret-for-handlers"
 
 func TestCreateToken(t *testing.T) {

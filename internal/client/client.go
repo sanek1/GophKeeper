@@ -112,7 +112,10 @@ func (c *Client) Register(login, password string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("error during registration: %w", err)
+		}
 		return fmt.Errorf("error during registration: %s (code %d)", body, resp.StatusCode)
 	}
 
@@ -140,7 +143,10 @@ func (c *Client) Login(login, password string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("error during login: %w", err)
+		}
 		return fmt.Errorf("error during login: %s (code %d)", body, resp.StatusCode)
 	}
 
@@ -224,7 +230,10 @@ func (c *Client) safeSyncAfterLogin() error {
 
 	// On the first login, we do not clear the token even if the sync failed
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("error during sync after login: %w", err)
+		}
 		return fmt.Errorf("error during sync after login: %s (code %d)", body, resp.StatusCode)
 	}
 
@@ -335,12 +344,18 @@ func (c *Client) GetSecret(id string) (*models.Secret, error) {
 	// Handle authorization error
 	if resp.StatusCode == http.StatusUnauthorized {
 		c.token = ""
-		_ = c.saveToken()
+		err = c.saveToken()
+		if err != nil {
+			return nil, fmt.Errorf("error saving token: %w", err)
+		}
 		return nil, fmt.Errorf("authorization error: token is invalid or expired")
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error getting secret: %w", err)
+		}
 		return nil, fmt.Errorf("error getting secret: %s (code %d)", body, resp.StatusCode)
 	}
 
@@ -355,7 +370,10 @@ func (c *Client) GetSecret(id string) (*models.Secret, error) {
 	c.cacheMutex.Unlock()
 
 	// Save the updated cache
-	c.saveLocalCache()
+	err = c.saveLocalCache()
+	if err != nil {
+		return nil, fmt.Errorf("error saving local cache: %w", err)
+	}
 
 	return &result, nil
 }
@@ -395,12 +413,18 @@ func (c *Client) CreateSecret(secretType, metadata string, data []byte) (*models
 	// Handle authorization error
 	if resp.StatusCode == http.StatusUnauthorized {
 		c.token = ""
-		_ = c.saveToken()
+		err = c.saveToken()
+		if err != nil {
+			return nil, fmt.Errorf("error saving token: %w", err)
+		}
 		return nil, fmt.Errorf("authorization error: token is invalid or expired")
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error creating secret: %w", err)
+		}
 		return nil, fmt.Errorf("error creating secret: %s (code %d)", body, resp.StatusCode)
 	}
 
@@ -415,7 +439,10 @@ func (c *Client) CreateSecret(secretType, metadata string, data []byte) (*models
 	c.cacheMutex.Unlock()
 
 	// Save the updated cache
-	c.saveLocalCache()
+	err = c.saveLocalCache()
+	if err != nil {
+		return nil, fmt.Errorf("error saving local cache: %w", err)
+	}
 
 	return &result, nil
 }
@@ -455,12 +482,18 @@ func (c *Client) UpdateSecret(id, secretType, metadata string, data []byte) erro
 	// Handle authorization error
 	if resp.StatusCode == http.StatusUnauthorized {
 		c.token = ""
-		_ = c.saveToken()
+		err = c.saveToken()
+		if err != nil {
+			return fmt.Errorf("error saving token: %w", err)
+		}
 		return fmt.Errorf("authorization error: token is invalid or expired")
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("error updating secret: %w", err)
+		}
 		return fmt.Errorf("error updating secret: %s (code %d)", body, resp.StatusCode)
 	}
 
@@ -475,7 +508,10 @@ func (c *Client) UpdateSecret(id, secretType, metadata string, data []byte) erro
 	c.cacheMutex.Unlock()
 
 	// Save the updated cache
-	c.saveLocalCache()
+	err = c.saveLocalCache()
+	if err != nil {
+		return fmt.Errorf("error saving local cache: %w", err)
+	}
 
 	return nil
 }
@@ -499,12 +535,18 @@ func (c *Client) DeleteSecret(id string) error {
 	// Handle authorization error
 	if resp.StatusCode == http.StatusUnauthorized {
 		c.token = ""
-		_ = c.saveToken()
+		err = c.saveToken()
+		if err != nil {
+			return fmt.Errorf("error saving token: %w", err)
+		}
 		return fmt.Errorf("authorization error: token is invalid or expired")
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("error deleting secret: %w", err)
+		}
 		return fmt.Errorf("error deleting secret: %s (code %d)", body, resp.StatusCode)
 	}
 
@@ -514,7 +556,10 @@ func (c *Client) DeleteSecret(id string) error {
 	c.cacheMutex.Unlock()
 
 	// Save the updated cache
-	c.saveLocalCache()
+	err = c.saveLocalCache()
+	if err != nil {
+		return fmt.Errorf("error saving local cache: %w", err)
+	}
 
 	return nil
 }
@@ -559,16 +604,25 @@ func (c *Client) SyncWithServer() error {
 	// Check the response code
 	if resp.StatusCode == http.StatusUnauthorized {
 		// Authorization problem - return a detailed message
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("synchronization error: %w", err)
+		}
 		c.token = ""
-		_ = c.saveToken() // Ignore the error when saving an empty token
+		err = c.saveToken() // Ignore the error when saving an empty token
+		if err != nil {
+			return fmt.Errorf("error saving token: %w", err)
+		}
 
 		// Possible problem with JWT-secret - give a hint
 		return fmt.Errorf("authorization error during synchronization: %s\nPossible, you need to re-authorize or update the JWT-secret", body)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("synchronization error: %w", err)
+		}
 		return fmt.Errorf("synchronization error: %s (code %d)", body, resp.StatusCode)
 	}
 
@@ -603,7 +657,10 @@ func (c *Client) StartAutoSync(ctx context.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				_ = c.SyncWithServer() // Ignore errors to not interrupt the cycle
+				err := c.SyncWithServer() // Ignore errors to not interrupt the cycle
+				if err != nil {
+					fmt.Printf("error during synchronization: %v\n", err)
+				}
 			case <-ctx.Done():
 				return
 			}
@@ -705,7 +762,10 @@ func (c *Client) saveLocalCache() error {
 // ensureDirExists creates a directory if it does not exist
 func ensureDirExists(dir string) {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		_ = os.MkdirAll(dir, 0755)
+		err = os.MkdirAll(dir, 0755)
+		if err != nil {
+			fmt.Printf("error creating directory: %v\n", err)
+		}
 	}
 }
 
@@ -757,7 +817,10 @@ func (c *Client) TestAuthentication() error {
 	defer resp.Body.Close()
 
 	// Read the response body for logging
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response body: %w", err)
+	}
 
 	// Print debug information
 	fmt.Printf("Server response: %d - %s\n", resp.StatusCode, body)
