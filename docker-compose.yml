@@ -11,7 +11,7 @@ services:
       - DB_PASS=postgres
       - DB_NAME=gophkeeper
       - DB_SSL_MODE=disable
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_SECRET=gophkeeper-super-secret-jwt-key-at-least-32-chars-long-change-in-production
     depends_on:
       postgres:
         condition: service_healthy

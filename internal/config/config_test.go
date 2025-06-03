@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -30,42 +31,54 @@ func TestLoadConfig(t *testing.T) {
 	}()
 
 	t.Run("DefaultConfig", func(t *testing.T) {
-		for key := range originalEnvs {
-			os.Unsetenv(key)
-		}
+		// Set required JWT_SECRET for tests
+		os.Setenv("JWT_SECRET", "test-jwt-secret-key-that-is-long-enough-for-validation")
+		defer os.Unsetenv("JWT_SECRET")
 
 		cfg, err := LoadConfig()
-		assert.NoError(t, err)
-		assert.Equal(t, "8081", cfg.ServerPort)
+		require.NoError(t, err)
+		assert.Equal(t, "8080", cfg.ServerPort)
 		assert.Equal(t, "localhost", cfg.DBHost)
 		assert.Equal(t, "5432", cfg.DBPort)
-		assert.Equal(t, "admin", cfg.DBUser)
+		assert.Equal(t, "postgres", cfg.DBUser)
 		assert.Equal(t, "admin", cfg.DBPass)
 		assert.Equal(t, "gophkeeper", cfg.DBName)
 		assert.Equal(t, "disable", cfg.DBSSLMode)
-		assert.Equal(t, DefaultJWTSecret, cfg.JWTSecret)
+		assert.Equal(t, "test-jwt-secret-key-that-is-long-enough-for-validation", cfg.JWTSecret)
 	})
 
 	t.Run("CustomConfig", func(t *testing.T) {
-		os.Setenv("SERVER_PORT", "9000")
-		os.Setenv("DB_HOST", "test.host")
+		// Set custom environment variables
+		os.Setenv("SERVER_PORT", "9090")
+		os.Setenv("DB_HOST", "custom-host")
 		os.Setenv("DB_PORT", "3306")
-		os.Setenv("DB_USER", "testuser")
-		os.Setenv("DB_PASS", "testpass")
-		os.Setenv("DB_NAME", "testdb")
+		os.Setenv("DB_USER", "custom-user")
+		os.Setenv("DB_PASS", "custom-pass")
+		os.Setenv("DB_NAME", "custom-db")
 		os.Setenv("DB_SSL_MODE", "require")
-		os.Setenv("JWT_SECRET", "test-secret")
+		os.Setenv("JWT_SECRET", "custom-jwt-secret-key-that-is-long-enough-for-security-validation")
+
+		defer func() {
+			os.Unsetenv("SERVER_PORT")
+			os.Unsetenv("DB_HOST")
+			os.Unsetenv("DB_PORT")
+			os.Unsetenv("DB_USER")
+			os.Unsetenv("DB_PASS")
+			os.Unsetenv("DB_NAME")
+			os.Unsetenv("DB_SSL_MODE")
+			os.Unsetenv("JWT_SECRET")
+		}()
 
 		cfg, err := LoadConfig()
-		assert.NoError(t, err)
-		assert.Equal(t, "9000", cfg.ServerPort)
-		assert.Equal(t, "test.host", cfg.DBHost)
+		require.NoError(t, err)
+		assert.Equal(t, "9090", cfg.ServerPort)
+		assert.Equal(t, "custom-host", cfg.DBHost)
 		assert.Equal(t, "3306", cfg.DBPort)
-		assert.Equal(t, "testuser", cfg.DBUser)
-		assert.Equal(t, "testpass", cfg.DBPass)
-		assert.Equal(t, "testdb", cfg.DBName)
+		assert.Equal(t, "custom-user", cfg.DBUser)
+		assert.Equal(t, "custom-pass", cfg.DBPass)
+		assert.Equal(t, "custom-db", cfg.DBName)
 		assert.Equal(t, "require", cfg.DBSSLMode)
-		assert.Equal(t, "test-secret", cfg.JWTSecret)
+		assert.Equal(t, "custom-jwt-secret-key-that-is-long-enough-for-security-validation", cfg.JWTSecret)
 	})
 }
 
@@ -75,9 +88,9 @@ func TestConfigValidation(t *testing.T) {
 			ServerPort: "invalid",
 			DBHost:     "localhost",
 			DBPort:     "5432",
-			DBUser:     "admin",
-			DBName:     "gophkeeper",
-			JWTSecret:  "secret",
+			DBUser:     "user",
+			DBName:     "db",
+			JWTSecret:  "test-jwt-secret-key-that-is-long-enough-for-validation",
 		}
 		err := cfg.validate()
 		assert.Error(t, err)
@@ -89,9 +102,9 @@ func TestConfigValidation(t *testing.T) {
 			ServerPort: "8080",
 			DBHost:     "localhost",
 			DBPort:     "invalid",
-			DBUser:     "admin",
-			DBName:     "gophkeeper",
-			JWTSecret:  "secret",
+			DBUser:     "user",
+			DBName:     "db",
+			JWTSecret:  "test-jwt-secret-key-that-is-long-enough-for-validation",
 		}
 		err := cfg.validate()
 		assert.Error(t, err)
@@ -103,9 +116,9 @@ func TestConfigValidation(t *testing.T) {
 			ServerPort: "8080",
 			DBHost:     "",
 			DBPort:     "5432",
-			DBUser:     "admin",
-			DBName:     "gophkeeper",
-			JWTSecret:  "secret",
+			DBUser:     "user",
+			DBName:     "db",
+			JWTSecret:  "test-jwt-secret-key-that-is-long-enough-for-validation",
 		}
 		err := cfg.validate()
 		assert.Error(t, err)
@@ -118,8 +131,8 @@ func TestConfigValidation(t *testing.T) {
 			DBHost:     "localhost",
 			DBPort:     "5432",
 			DBUser:     "",
-			DBName:     "gophkeeper",
-			JWTSecret:  "secret",
+			DBName:     "db",
+			JWTSecret:  "test-jwt-secret-key-that-is-long-enough-for-validation",
 		}
 		err := cfg.validate()
 		assert.Error(t, err)
@@ -131,9 +144,9 @@ func TestConfigValidation(t *testing.T) {
 			ServerPort: "8080",
 			DBHost:     "localhost",
 			DBPort:     "5432",
-			DBUser:     "admin",
+			DBUser:     "user",
 			DBName:     "",
-			JWTSecret:  "secret",
+			JWTSecret:  "test-jwt-secret-key-that-is-long-enough-for-validation",
 		}
 		err := cfg.validate()
 		assert.Error(t, err)
@@ -145,8 +158,8 @@ func TestConfigValidation(t *testing.T) {
 			ServerPort: "8080",
 			DBHost:     "localhost",
 			DBPort:     "5432",
-			DBUser:     "admin",
-			DBName:     "gophkeeper",
+			DBUser:     "user",
+			DBName:     "db",
 			JWTSecret:  "",
 		}
 		err := cfg.validate()
@@ -154,15 +167,29 @@ func TestConfigValidation(t *testing.T) {
 		assert.Contains(t, err.Error(), "JWT secret is required")
 	})
 
+	t.Run("ShortJWTSecret", func(t *testing.T) {
+		cfg := &Config{
+			ServerPort: "8080",
+			DBHost:     "localhost",
+			DBPort:     "5432",
+			DBUser:     "user",
+			DBName:     "db",
+			JWTSecret:  "short", // Too short
+		}
+		err := cfg.validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "JWT secret must be at least 32 characters")
+	})
+
 	t.Run("InvalidSSLMode", func(t *testing.T) {
 		cfg := &Config{
 			ServerPort: "8080",
 			DBHost:     "localhost",
 			DBPort:     "5432",
-			DBUser:     "admin",
-			DBName:     "gophkeeper",
+			DBUser:     "user",
+			DBName:     "db",
 			DBSSLMode:  "invalid",
-			JWTSecret:  "secret",
+			JWTSecret:  "test-jwt-secret-key-that-is-long-enough-for-validation",
 		}
 		err := cfg.validate()
 		assert.Error(t, err)
@@ -174,10 +201,10 @@ func TestConfigValidation(t *testing.T) {
 			ServerPort: "8080",
 			DBHost:     "localhost",
 			DBPort:     "5432",
-			DBUser:     "admin",
-			DBName:     "gophkeeper",
+			DBUser:     "user",
+			DBName:     "db",
 			DBSSLMode:  "disable",
-			JWTSecret:  "secret",
+			JWTSecret:  "test-jwt-secret-key-that-is-long-enough-for-validation",
 		}
 		err := cfg.validate()
 		assert.NoError(t, err)

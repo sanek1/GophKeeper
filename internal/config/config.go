@@ -20,25 +20,26 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	// Load .env file if exists, ignore error if not
+	// Load .env file if it exists
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("No .env file found")
 	}
 
 	cfg := &Config{
-		ServerPort: getEnv("SERVER_PORT", "8081"),
+		ServerPort: getEnv("SERVER_PORT", "8080"),
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "admin"),
+		DBUser:     getEnv("DB_USER", "postgres"),
 		DBPass:     getEnv("DB_PASS", "admin"),
 		DBName:     getEnv("DB_NAME", "gophkeeper"),
 		DBSSLMode:  getEnv("DB_SSL_MODE", "disable"),
-		JWTSecret:  getEnv("JWT_SECRET", DefaultJWTSecret),
+		JWTSecret:  getEnv("JWT_SECRET", ""),
 	}
 
+	// Validate the configuration
 	if err := cfg.validate(); err != nil {
-		return nil, fmt.Errorf("config validation failed: %w", err)
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
 
 	return cfg, nil
@@ -65,8 +66,15 @@ func (c *Config) validate() error {
 	if c.DBName == "" {
 		return fmt.Errorf("database name is required")
 	}
+
+	// JWT Secret is now mandatory for security
 	if c.JWTSecret == "" {
-		return fmt.Errorf("JWT secret is required")
+		return fmt.Errorf("JWT secret is required - set JWT_SECRET environment variable")
+	}
+
+	// JWT secret should be at least 32 characters for security
+	if len(c.JWTSecret) < 32 {
+		return fmt.Errorf("JWT secret must be at least 32 characters long for security")
 	}
 
 	// check SSL mode

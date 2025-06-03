@@ -586,8 +586,15 @@ func TestClient_SyncWithServer(t *testing.T) {
 	})
 
 	t.Run("SyncWithServer_NoToken", func(t *testing.T) {
+		tempDir := t.TempDir()
 		client := &Client{
-			token: "",
+			config: Config{
+				TokenFile:     filepath.Join(tempDir, "token"),
+				MasterPwdFile: filepath.Join(tempDir, "master"),
+				CacheDir:      tempDir,
+			},
+			token:      "",
+			localCache: make(map[string]models.Secret),
 		}
 
 		err := client.SyncWithServer()
@@ -596,11 +603,16 @@ func TestClient_SyncWithServer(t *testing.T) {
 	})
 
 	t.Run("SyncWithServer_Unauthorized", func(t *testing.T) {
+		tempDir := t.TempDir()
 		client := &Client{
 			config: Config{
-				ServerURL: server.URL,
+				ServerURL:     server.URL,
+				TokenFile:     filepath.Join(tempDir, "token"),
+				MasterPwdFile: filepath.Join(tempDir, "master"),
+				CacheDir:      tempDir,
 			},
-			token: "unauthorized",
+			token:      "unauthorized",
+			localCache: make(map[string]models.Secret),
 		}
 
 		err := client.SyncWithServer()
@@ -609,11 +621,16 @@ func TestClient_SyncWithServer(t *testing.T) {
 	})
 
 	t.Run("SyncWithServer_ServerError", func(t *testing.T) {
+		tempDir := t.TempDir()
 		client := &Client{
 			config: Config{
-				ServerURL: server.URL,
+				ServerURL:     server.URL,
+				TokenFile:     filepath.Join(tempDir, "token"),
+				MasterPwdFile: filepath.Join(tempDir, "master"),
+				CacheDir:      tempDir,
 			},
-			token: "error",
+			token:      "error",
+			localCache: make(map[string]models.Secret),
 		}
 
 		err := client.SyncWithServer()
@@ -622,11 +639,16 @@ func TestClient_SyncWithServer(t *testing.T) {
 	})
 
 	t.Run("SyncWithServer_InvalidJSON", func(t *testing.T) {
+		tempDir := t.TempDir()
 		client := &Client{
 			config: Config{
-				ServerURL: server.URL,
+				ServerURL:     server.URL,
+				TokenFile:     filepath.Join(tempDir, "token"),
+				MasterPwdFile: filepath.Join(tempDir, "master"),
+				CacheDir:      tempDir,
 			},
-			token: "invalid-json",
+			token:      "invalid-json",
+			localCache: make(map[string]models.Secret),
 		}
 
 		err := client.SyncWithServer()
@@ -635,12 +657,17 @@ func TestClient_SyncWithServer(t *testing.T) {
 	})
 
 	t.Run("SyncWithServer_PreventDuplicate", func(t *testing.T) {
+		tempDir := t.TempDir()
 		client := &Client{
 			config: Config{
-				ServerURL: server.URL,
+				ServerURL:     server.URL,
+				TokenFile:     filepath.Join(tempDir, "token"),
+				MasterPwdFile: filepath.Join(tempDir, "master"),
+				CacheDir:      tempDir,
 			},
-			token:   "valid-token",
-			syncing: true, // Already syncing
+			token:      "valid-token",
+			syncing:    true, // Already syncing
+			localCache: make(map[string]models.Secret),
 		}
 
 		err := client.SyncWithServer()

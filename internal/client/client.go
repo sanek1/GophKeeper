@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,6 +40,36 @@ type Client struct {
 }
 
 var testJWTSecret = "test-secret-key-for-ci"
+func validateFilePath(filePath string) error {
+	cleanPath := filepath.Clean(filePath)
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("path traversal attempt detected")
+	}
+	if filepath.IsAbs(cleanPath) {
+		if strings.Contains(cleanPath, "/../") || strings.HasSuffix(cleanPath, "/..") {
+			return fmt.Errorf("suspicious path pattern detected")
+		}
+	}
+	return nil
+}
+
+func safeReadFile(filePath string) ([]byte, error) {
+	if err := validateFilePath(filePath); err != nil {
+		return nil, fmt.Errorf("unsafe file path: %w", err)
+	}
+
+	return os.ReadFile(filepath.Clean(filePath))
+}
+
+func safeWriteFile(filePath string, data []byte, perm os.FileMode) error {
+	if err := validateFilePath(filePath); err != nil {
+		return fmt.Errorf("unsafe file path: %w", err)
+	}
+
+	cleanPath := filepath.Clean(filePath)
+	ensureDirExists(filepath.Dir(cleanPath))
+	return os.WriteFile(cleanPath, data, perm)
+}
 
 // NewClient creates a new client instance
 func NewClient(config Config) *Client {
@@ -695,7 +726,7 @@ func (c *Client) DisplaySecretData(secret *models.Secret) (string, error) {
 
 // loadToken loads the token from the file
 func (c *Client) loadToken() {
-	data, err := os.ReadFile(c.config.TokenFile)
+	data, err := safeReadFile(c.config.TokenFile)
 	if err == nil && len(data) > 0 {
 		c.token = string(data)
 	}
@@ -703,12 +734,12 @@ func (c *Client) loadToken() {
 
 // saveToken saves the token to the file
 func (c *Client) saveToken() error {
-	return os.WriteFile(c.config.TokenFile, []byte(c.token), 0600)
+	return safeWriteFile(c.config.TokenFile, []byte(c.token), 0600)
 }
 
 // loadMasterPassword loads the master password from the file
 func (c *Client) loadMasterPassword() {
-	data, err := os.ReadFile(c.config.MasterPwdFile)
+	data, err := safeReadFile(c.config.MasterPwdFile)
 	if err == nil && len(data) > 0 {
 		c.masterPwd = string(data)
 	}
@@ -716,13 +747,13 @@ func (c *Client) loadMasterPassword() {
 
 // saveMasterPassword saves the master password to the file
 func (c *Client) saveMasterPassword() error {
-	return os.WriteFile(c.config.MasterPwdFile, []byte(c.masterPwd), 0600)
+	return safeWriteFile(c.config.MasterPwdFile, []byte(c.masterPwd), 0600)
 }
 
 // loadLocalCache loads the local cache from the file
 func (c *Client) loadLocalCache() {
 	cacheFile := filepath.Join(c.config.CacheDir, "cache.json")
-	data, err := os.ReadFile(cacheFile)
+	data, err := safeReadFile(cacheFile)
 	if err != nil {
 		return
 	}
@@ -756,13 +787,13 @@ func (c *Client) saveLocalCache() error {
 	}
 
 	cacheFile := filepath.Join(c.config.CacheDir, "cache.json")
-	return os.WriteFile(cacheFile, data, 0600)
+	return safeWriteFile(cacheFile, data, 0600)
 }
 
 // ensureDirExists creates a directory if it does not exist
 func ensureDirExists(dir string) {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0755)
+		err = os.MkdirAll(dir, 0750)
 		if err != nil {
 			fmt.Printf("error creating directory: %v\n", err)
 		}
