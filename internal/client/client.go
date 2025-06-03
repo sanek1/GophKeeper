@@ -40,6 +40,7 @@ type Client struct {
 }
 
 var testJWTSecret = "test-secret-key-for-ci"
+
 func validateFilePath(filePath string) error {
 	cleanPath := filepath.Clean(filePath)
 	if strings.Contains(cleanPath, "..") {

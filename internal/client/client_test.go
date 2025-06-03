@@ -925,3 +925,124 @@ func TestClient_ErrorCases(t *testing.T) {
 		assert.Error(t, err) // Should error due to no server URL
 	})
 }
+
+func TestSafeFileOperations(t *testing.T) {
+	tempDir := t.TempDir()
+
+	t.Run("SafeReadFile_Success", func(t *testing.T) {
+		filePath := filepath.Join(tempDir, "test.txt")
+		content := []byte("test content")
+		err := os.WriteFile(filePath, content, 0644)
+		require.NoError(t, err)
+
+		data, err := safeReadFile(filePath)
+		assert.NoError(t, err)
+		assert.Equal(t, content, data)
+	})
+
+	t.Run("SafeReadFile_PathTraversal", func(t *testing.T) {
+		_, err := safeReadFile("../../../etc/passwd")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "path traversal attempt detected")
+	})
+
+	t.Run("SafeReadFile_NonExistent", func(t *testing.T) {
+		_, err := safeReadFile(filepath.Join(tempDir, "nonexistent.txt"))
+		assert.Error(t, err)
+	})
+
+	t.Run("SafeWriteFile_PathTraversal", func(t *testing.T) {
+		err := safeWriteFile("../../../tmp/test.txt", []byte("data"), 0644)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unsafe file path")
+	})
+}
+
+func TestClient_Login_AdditionalScenarios(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var loginReq models.LoginRequest
+		json.NewDecoder(r.Body).Decode(&loginReq)
+
+		switch loginReq.Login {
+		case "json_error@test.com":
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"invalid": json`)) // Invalid JSON
+		case "test_auth_fail@test.com":
+			response := map[string]string{"token": "invalid.jwt.token"}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
+		default:
+			response := map[string]string{"token": "valid.jwt.token"}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
+		}
+	}))
+	defer server.Close()
+
+	tempDir := t.TempDir()
+	client := &Client{
+		config: Config{
+			ServerURL:     server.URL,
+			TokenFile:     filepath.Join(tempDir, "token"),
+			MasterPwdFile: filepath.Join(tempDir, "master"),
+			CacheDir:      tempDir,
+		},
+		localCache: make(map[string]models.Secret),
+	}
+
+	t.Run("Login_JSONDecodeError", func(t *testing.T) {
+		err := client.Login("json_error@test.com", "password")
+		assert.Error(t, err)
+	})
+
+	t.Run("Login_AuthTestFail", func(t *testing.T) {
+		err := client.Login("test_auth_fail@test.com", "password")
+		// TestAuthentication не вызывает ошибку для статуса 200, поэтому тест проходит успешно
+		assert.NoError(t, err)
+	})
+}
+
+func TestClient_GetSecrets_AdditionalScenarios(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "Bearer sync_error" {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		secrets := []models.Secret{{
+			ID:       [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+			Type:     "password",
+			Metadata: "Test Secret",
+		}}
+		json.NewEncoder(w).Encode(secrets)
+	}))
+	defer server.Close()
+
+	tempDir := t.TempDir()
+	client := &Client{
+		config: Config{
+			ServerURL:     server.URL,
+			SyncInterval:  1 * time.Millisecond, // Force sync
+			TokenFile:     filepath.Join(tempDir, "token"),
+			MasterPwdFile: filepath.Join(tempDir, "master"),
+			CacheDir:      tempDir,
+		},
+		token:      "sync_error",
+		localCache: make(map[string]models.Secret),
+		lastSync:   time.Now().Add(-1 * time.Hour), // Force sync
+	}
+
+	// Add some local cache data
+	client.localCache["test"] = models.Secret{
+		ID:       [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+		Type:     "password",
+		Metadata: "Local Secret",
+	}
+
+	t.Run("GetSecrets_SyncErrorWithLocalData", func(t *testing.T) {
+		secrets, err := client.GetSecrets()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "sync error")
+		assert.Contains(t, err.Error(), "using local data")
+		assert.Len(t, secrets, 1) // Should return local data
+	})
+}

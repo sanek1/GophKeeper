@@ -226,4 +226,12 @@ func TestGetEnv(t *testing.T) {
 		result := getEnv("NONEXISTENT_VAR", "default_value")
 		assert.Equal(t, "default_value", result)
 	})
+
+	t.Run("EmptyEnvVar", func(t *testing.T) {
+		os.Setenv("EMPTY_VAR", "")
+		defer os.Unsetenv("EMPTY_VAR")
+
+		result := getEnv("EMPTY_VAR", "default_value")
+		assert.Equal(t, "", result)
+	})
 }

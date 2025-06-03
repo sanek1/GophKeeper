@@ -599,3 +599,52 @@ func TestAPI_ErrorHandling(t *testing.T) {
 		assert.Equal(t, http.StatusConflict, w.Code)
 	})
 }
+
+func TestAPI_SyncData(t *testing.T) {
+	api := setupTestAPI()
+	router := gin.New()
+	router.Use(api.AuthMiddleware())
+	router.POST("/sync", api.SyncData)
+
+	userID := uuid.New()
+	token := createTestJWT(userID.String())
+
+	t.Run("SuccessfulSync", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/sync", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response models.SyncStatus
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.True(t, response.Success)
+		assert.GreaterOrEqual(t, response.ItemsDownloaded, 0)
+	})
+
+	t.Run("UnauthorizedSync", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/sync", nil)
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("InvalidUserID", func(t *testing.T) {
+		invalidToken := createTestJWT("invalid-uuid")
+		req := httptest.NewRequest("POST", "/sync", nil)
+		req.Header.Set("Authorization", "Bearer "+invalidToken)
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}

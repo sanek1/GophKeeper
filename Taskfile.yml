@@ -60,6 +60,21 @@ tasks:
         #- go build cmd/server/*.go
         - golangci-lint run --config .golangci.yml
       silent: true
+  build:
+      deps: [lint]
+      cmds:
+        - go fmt ./...
+        - go vet ./...
+        - go build -o ./.runtime/client ./cmd/client/*.go
+        - go build -o ./.runtime/server ./cmd/server/*.go
+      silent: true
 
+  run-client:
+      cmds:
+        - ./.runtime/client
+      silent: true
 
-
+  run-server:
+      cmds:
+        - ./.runtime/server
+      silent: true
