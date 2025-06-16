@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "type": "go",
+            "name": "debug main.go",
+            "request": "launch",
+            "mode": "auto",
+            "args": [],
+            "program": "c:\\golang\\yandex\\Task2\\GophKeeper\\cmd\\server\\main.go"
+        },
+        {
+            "type": "go",
+            "name": "debug client.go",
+            "request": "launch",
+            "mode": "auto",
+            "args": [],
+            "program": "c:\\golang\\yandex\\Task2\\GophKeeper\\cmd\\client\\main.go"
+        },
+        {
+            "type": "go",
+            "name": "debug api.go",
+            "request": "launch",
+            "mode": "auto",
+            "args": [],
+            "program": "c:\\golang\\yandex\\task2\\GophKeeper\\internal\\api\\api.go"
+        }
+    ]
+}

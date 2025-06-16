@@ -1,8 +1,15 @@
 # GophKeeper
 
+[![CI](https://github.com/sanek1/GophKeeper/actions/workflows/ci.yml/badge.svg)](https://github.com/sanek1/GophKeeper/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/sanek1/GophKeeper/actions/workflows/codeql.yml/badge.svg)](https://github.com/sanek1/GophKeeper/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/sanek1/GophKeeper/branch/main/graph/badge.svg)](https://codecov.io/gh/sanek1/GophKeeper)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sanek1/GophKeeper)](https://goreportcard.com/report/github.com/sanek1/GophKeeper)
+[![Go Reference](https://pkg.go.dev/badge/github.com/sanek1/GophKeeper.svg)](https://pkg.go.dev/github.com/sanek1/GophKeeper)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 GophKeeper - это защищенный менеджер паролей и конфиденциальных данных, состоящий из серверной и клиентской части.
 
-## Функциональность
+## 🚀 Функциональность
 
 ### Сервер
 - REST API для доступа к хранилищу секретов
@@ -16,7 +23,7 @@ GophKeeper - это защищенный менеджер паролей и ко
 - Поддержка различных типов секретов (пароли, текст, карты, заметки и т.д.)
 - Кроссплатформенность (Windows, Linux, Mac OS)
 
-## Типы хранимых данных
+## 📦 Типы хранимых данных
 
 - `password` - пароли
 - `card` - банковские карты
@@ -25,18 +32,29 @@ GophKeeper - это защищенный менеджер паролей и ко
 - `note` - заметки
 - `binary` - бинарные данные
 
-## Сборка и запуск
+## 🛠️ Сборка и запуск
 
 ### Предварительные требования
 - Go 1.21+
 - PostgreSQL
 - Make (опционально)
+- golangci-lint (для разработки)
+
+### Установка инструментов разработки
+
+```bash
+# Установка всех необходимых инструментов
+make install-tools
+```
 
 ### Сборка
 
 Для сборки проекта используйте Makefile:
 
 ```bash
+# Показать все доступные команды
+make help
+
 # Сборка сервера и клиента для текущей платформы
 make build
 
@@ -62,7 +80,7 @@ make client-all
 docker-compose up -d
 ```
 
-## Использование клиента
+## 📋 Использование клиента
 
 ```bash
 # Показать версию клиента
@@ -93,26 +111,102 @@ client update <id> <метаданные> <данные>
 client delete <id>
 ```
 
-## Безопасность
+## 🔒 Безопасность
 
 - Аутентификация пользователей через JWT токены
 - Данные шифруются на стороне клиента с использованием AES-GCM
 - Каждый пользователь имеет доступ только к своим секретам
 - Пароли хранятся в хешированном виде с использованием bcrypt
 
-## Разработка
+## 🧪 Разработка
+
+### Запуск тестов
 
 ```bash
-# Запуск тестов
+# Запуск всех тестов
 make test
 
-# Генерация Swagger документации
-make swagger
+# Запуск тестов с покрытием
+make test-coverage
 
-# Проверка линтером
-make lint
+# Запуск тестов с детектором гонок
+make test-race
+
+# Проверка покрытия тестами (минимум 80%)
+make coverage-check
 ```
 
-## Лицензия
+### Качество кода
+
+```bash
+# Запуск линтера
+make lint
+
+# Запуск линтера с автоисправлением
+make lint-fix
+
+# Форматирование кода
+make fmt
+
+# Полная проверка кода
+make check
+```
+
+### CI/CD команды
+
+```bash
+# Команды для CI/CD
+make ci-test      # Тесты с проверкой покрытия
+make ci-lint      # Линтинг кода
+make ci-build     # Сборка всех артефактов
+make ci           # Полная проверка
+```
+
+### Docker
+
+```bash
+# Сборка Docker образа
+make docker-build
+
+# Запуск в Docker
+make docker-run
+
+# Остановка Docker
+make docker-stop
+```
+
+## 📊 Покрытие тестами
+
+Проект имеет высокое покрытие тестами:
+
+| Модуль | Покрытие |
+|--------|----------|
+| Config | 95.8% |
+| Repository | 89.2% |
+| Database | 88.9% |
+| Crypto | 82.1% |
+| Auth | 82.5% |
+| API | 40.1% |
+
+Общее покрытие: **>80%**
+
+## 🏗️ CI/CD
+
+Проект использует GitHub Actions для автоматизации:
+
+- **Линтинг кода** с golangci-lint
+- **Запуск тестов** с проверкой покрытия
+- **Сборка** для множества платформ
+- **Анализ безопасности** с CodeQL и Gosec
+- **Docker образы** для продакшена
+
+## 🗂️ Генерация документации
+
+```bash
+# Генерация Swagger документации
+make swagger
+```
+
+## 📝 Лицензия
 
 MIT 

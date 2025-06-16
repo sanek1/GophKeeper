@@ -1,0 +1,265 @@
+basePath: /
+definitions:
+  models.LoginRequest:
+    properties:
+      login:
+        example: user@example.com
+        type: string
+      password:
+        example: password123
+        minLength: 8
+        type: string
+    required:
+    - login
+    - password
+    type: object
+  models.RegisterRequest:
+    properties:
+      login:
+        example: user@example.com
+        type: string
+      password:
+        example: password123
+        minLength: 8
+        type: string
+    required:
+    - login
+    - password
+    type: object
+  models.Secret:
+    properties:
+      created_at:
+        type: string
+      data:
+        description: Encrypted data
+        items:
+          type: integer
+        type: array
+      id:
+        type: string
+      metadata:
+        description: Metadata (name, description)
+        type: string
+      type:
+        description: 'Secret type: password, card, text, file, etc.'
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.SecretRequest:
+    type: object
+  models.SyncStatus:
+    properties:
+      error_message:
+        type: string
+      items_downloaded:
+        type: integer
+      items_uploaded:
+        type: integer
+      last_sync_time:
+        type: string
+      success:
+        type: boolean
+    type: object
+  models.User:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      login:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: API for GophKeeper password manager
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: GophKeeper API
+  version: "1.0"
+paths:
+  /api/login:
+    post:
+      consumes:
+      - application/json
+      description: Login with credentials
+      parameters:
+      - description: User login info
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: JWT token
+          schema:
+            type: string
+      summary: Login user
+      tags:
+      - auth
+  /api/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with login and password
+      parameters:
+      - description: User registration info
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.User'
+      summary: Register new user
+      tags:
+      - auth
+  /api/secrets:
+    get:
+      description: Get all secrets for authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Secret'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Get all secrets
+      tags:
+      - secrets
+    post:
+      consumes:
+      - application/json
+      description: Create new secret
+      parameters:
+      - description: Secret info
+        in: body
+        name: secret
+        required: true
+        schema:
+          $ref: '#/definitions/models.SecretRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Secret'
+      security:
+      - BearerAuth: []
+      summary: Create secret
+      tags:
+      - secrets
+  /api/secrets/{id}:
+    delete:
+      description: Delete secret by ID
+      parameters:
+      - description: Secret ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Secret'
+      security:
+      - BearerAuth: []
+      summary: Delete secret
+      tags:
+      - secrets
+    get:
+      description: Get secret by ID
+      parameters:
+      - description: Secret ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Secret'
+      security:
+      - BearerAuth: []
+      summary: Get secret
+      tags:
+      - secrets
+    put:
+      consumes:
+      - application/json
+      description: Update secret by ID
+      parameters:
+      - description: Secret ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Secret info
+        in: body
+        name: secret
+        required: true
+        schema:
+          $ref: '#/definitions/models.SecretRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Secret'
+      security:
+      - BearerAuth: []
+      summary: Update secret
+      tags:
+      - secrets
+  /api/sync:
+    post:
+      description: Sync client data with server
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SyncStatus'
+      security:
+      - BearerAuth: []
+      summary: Sync data
+      tags:
+      - sync
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    description: 'Enter JWT token in format: Bearer {your-token}'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

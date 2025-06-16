@@ -1,0 +1,90 @@
+package api
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+)
+
+func (a *API) AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request"})
+			c.Abort()
+			return
+		}
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization header is required"})
+			c.Abort()
+			return
+		}
+
+		var tokenString string
+		// Check format - with Bearer or without
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			// Standard format "Bearer <token>"
+			parts := strings.Split(authHeader, " ")
+			if len(parts) != 2 {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header format"})
+				c.Abort()
+				return
+			}
+			tokenString = parts[1]
+		} else {
+			// Token passed directly without "Bearer " - accept, but log a warning
+			log.Printf("WARNING: Token passed without 'Bearer' prefix. Use format 'Bearer <token>'")
+			tokenString = authHeader
+		}
+
+		log.Printf("Checking token")
+
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+
+			// Use JWT secret from API configuration
+			return []byte(a.jwtSecret), nil
+		})
+
+		if err != nil {
+			log.Printf("Error checking token: %v", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.Abort()
+			return
+		}
+
+		if !token.Valid {
+			log.Printf("Token is invalid")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.Abort()
+			return
+		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
+			c.Abort()
+			return
+		}
+
+		userID, ok := claims["user_id"].(string)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id in token"})
+			c.Abort()
+			return
+		}
+
+		c.Set("user_id", userID)
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+		c.Next()
+	}
+}
